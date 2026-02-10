@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type JSX } from "react";
+import { useEffect, useMemo, useState, type JSX, type ReactNode } from "react";
 import {
   Accordion,
   AccordionItem,
@@ -20,9 +20,10 @@ import {
   TableRow,
 } from "@heroui/react";
 import {
-  Bell,
+ 
   Box,
   ChevronDown,
+  ChevronRight,
   CreditCard,
   Globe,
   LayoutGrid,
@@ -34,7 +35,7 @@ import {
   Search,
   ShoppingBag,
   Settings,
-  Sparkles,
+ 
   Sun,
 } from "lucide-react";
 import {
@@ -49,6 +50,23 @@ import "./App.css";
 
 type ThemeMode = "light" | "dark";
 
+type ThemePaletteId = "ocean" | "mint" | "sunset" | "violet";
+
+type ThemePalette = {
+  id: ThemePaletteId;
+  label: string;
+  accent: string;
+  accent2: string;
+};
+
+type ThemeFontId = "space" | "sarabun";
+
+type ThemeFont = {
+  id: ThemeFontId;
+  label: string;
+  value: string;
+};
+
 type MenuItem = {
   id: string;
   label: string;
@@ -61,6 +79,30 @@ type FaqItem = {
   title: string;
   content: string;
   icon: JSX.Element;
+};
+
+type SidebarToggleProps = {
+  isSidebarOpen: boolean;
+  onToggleSidebar: () => void;
+};
+
+type PageHeaderProps = SidebarToggleProps & {
+  title: string;
+  subtitle?: string;
+  actions?: JSX.Element;
+};
+
+type PageShellProps = PageHeaderProps & {
+  children: ReactNode;
+};
+
+type ThemeController = {
+  mode: ThemeMode;
+  setMode: (mode: ThemeMode | ((prev: ThemeMode) => ThemeMode)) => void;
+  paletteId: ThemePaletteId;
+  setPaletteId: (id: ThemePaletteId) => void;
+  fontId: ThemeFontId;
+  setFontId: (id: ThemeFontId) => void;
 };
 
 const menuItems: MenuItem[] = [
@@ -92,7 +134,48 @@ const menuItems: MenuItem[] = [
     subItems: [
       { label: "Profile", path: "/settings/profile" },
       { label: "Preferences", path: "/settings/preferences" },
+      { label: "Theme", path: "/settings/theme" },
     ],
+  },
+];
+
+const themePalettes: ThemePalette[] = [
+  {
+    id: "ocean",
+    label: "Ocean",
+    accent: "#2563eb",
+    accent2: "#0ea5e9",
+  },
+  {
+    id: "mint",
+    label: "Mint",
+    accent: "#0f766e",
+    accent2: "#22d3ee",
+  },
+  {
+    id: "sunset",
+    label: "Sunset",
+    accent: "#f97316",
+    accent2: "#f43f5e",
+  },
+  {
+    id: "violet",
+    label: "Violet",
+    accent: "#7c3aed",
+    accent2: "#ec4899",
+  },
+];
+
+const themeFonts: ThemeFont[] = [
+  {
+    id: "space",
+    label: "Space Grotesk",
+    value: '"Space Grotesk", "Segoe UI", system-ui, sans-serif',
+  },
+  {
+    id: "sarabun",
+    label: "Sarabun",
+    value: '"Sarabun", "Segoe UI", system-ui, sans-serif',
   },
 ];
 
@@ -135,10 +218,18 @@ const faqItems: FaqItem[] = [
   },
 ];
 
-function useTheme(): [ThemeMode, (mode: ThemeMode) => void] {
+function useTheme(): ThemeController {
   const [mode, setMode] = useState<ThemeMode>(() => {
     const stored = localStorage.getItem("theme-mode");
     return stored === "dark" ? "dark" : "light";
+  });
+  const [paletteId, setPaletteId] = useState<ThemePaletteId>(() => {
+    const stored = localStorage.getItem("theme-palette");
+    return (stored as ThemePaletteId) || "ocean";
+  });
+  const [fontId, setFontId] = useState<ThemeFontId>(() => {
+    const stored = localStorage.getItem("theme-font");
+    return (stored as ThemeFontId) || "space";
   });
 
   useEffect(() => {
@@ -151,11 +242,39 @@ function useTheme(): [ThemeMode, (mode: ThemeMode) => void] {
     localStorage.setItem("theme-mode", mode);
   }, [mode]);
 
-  return [mode, setMode];
+  useEffect(() => {
+    const palette = themePalettes.find((item) => item.id === paletteId);
+    if (!palette) {
+      return;
+    }
+    const root = document.documentElement;
+    root.style.setProperty("--app-accent", palette.accent);
+    root.style.setProperty("--app-accent-2", palette.accent2);
+    localStorage.setItem("theme-palette", palette.id);
+  }, [paletteId]);
+
+  useEffect(() => {
+    const font = themeFonts.find((item) => item.id === fontId);
+    if (!font) {
+      return;
+    }
+    const root = document.documentElement;
+    root.style.setProperty("--app-font", font.value);
+    localStorage.setItem("theme-font", font.id);
+  }, [fontId]);
+
+  return {
+    mode,
+    setMode,
+    paletteId,
+    setPaletteId,
+    fontId,
+    setFontId,
+  };
 }
 
 function AppShell() {
-  const [mode, setMode] = useTheme();
+  const { mode, setMode, paletteId, setPaletteId, fontId, setFontId } = useTheme();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const location = useLocation();
   const expandedKeys = useMemo(() => {
@@ -164,6 +283,7 @@ function AppShell() {
     );
     return match ? [match.id] : [];
   }, [location.pathname]);
+  const toggleSidebar = () => setIsSidebarOpen((current) => !current);
 
   return (
     <div className="app">
@@ -180,7 +300,7 @@ function AppShell() {
             <div className="appbar-search-wrap">
               <Input
                 aria-label="Search"
-                placeholder="Search workspace"
+                placeholder="Search  "
                 startContent={<Search size={16} />}
                 variant="flat"
                 size="sm"
@@ -189,27 +309,31 @@ function AppShell() {
             </div>
           </div>
           <div className="appbar-actions">
-            <Chip
-              color="secondary"
+ 
+   
+            <Button
+              isIconOnly
               variant="flat"
-              startContent={<Sparkles size={14} />}
-            >
-              Live demo
-            </Chip>
-            <Button isIconOnly variant="flat" aria-label="Alerts">
-              <Bell size={18} />
-            </Button>
-            <Switch
-              isSelected={mode === "dark"}
-              onValueChange={(checked) => setMode(checked ? "dark" : "light")}
-              size="sm"
-              thumbIcon={({ isSelected }) =>
-                isSelected ? <Moon size={14} /> : <Sun size={14} />
+              aria-label={
+                mode === "dark" ? "Switch to light mode" : "Switch to dark mode"
               }
+              onPress={() =>
+                setMode((current: ThemeMode) => (current === "dark" ? "light" : "dark"))
+              }
+              className="theme-toggle"
             >
-              {mode === "dark" ? "Dark" : "Light"}
-            </Switch>
-            <Avatar name="S" size="sm" color="primary" className="appbar-avatar" />
+              {mode === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            </Button>  
+                         
+            <Avatar
+             
+              showFallback
+              name="Jane"
+              size="sm"
+              className="appbar-avatar w-6 h-6 text-tiny"
+              src="https://i.pravatar.cc/150?u=a042581f4e29026024d"
+            />
+          
           </div>
         </div>
       </header>
@@ -226,14 +350,6 @@ function AppShell() {
                 <Chip size="sm" color="primary" variant="flat">
                   v4
                 </Chip>
-                <Button
-                  isIconOnly
-                  variant="light"
-                  aria-label="Toggle sidebar"
-                  onPress={() => setIsSidebarOpen(false)}
-                >
-                  <Menu size={18} />
-                </Button>
               </div>
             </CardHeader>
             <Divider />
@@ -276,7 +392,12 @@ function AppShell() {
                           className="submenu-button"
                           size="sm"
                         >
-                          {sub.label}
+                          <span className="submenu-item">
+                            <span className="submenu-icon">
+                              <ChevronRight size={14} />
+                            </span>
+                            <span className="submenu-text">{sub.label}</span>
+                          </span>
                         </Button>
                       ))}
                     </div>
@@ -288,27 +409,88 @@ function AppShell() {
         </aside>
 
         <main className="content">
-          {!isSidebarOpen && (
-            <div className="sidebar-open">
-              <Button
-                isIconOnly
-                variant="flat"
-                aria-label="Open sidebar"
-                onPress={() => setIsSidebarOpen(true)}
-              >
-                <Menu size={18} />
-              </Button>
-            </div>
-          )}
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard/overview" />} />
-            <Route path="/dashboard/overview" element={<DashboardPage />} />
-            <Route path="/dashboard/insights" element={<InsightsPage />} />
-            <Route path="/orders/all" element={<OrdersPage />} />
-            <Route path="/orders/fulfillment" element={<FulfillmentPage />} />
-            <Route path="/settings/profile" element={<ProfilePage />} />
-            <Route path="/settings/preferences" element={<PreferencesPage />} />
-            <Route path="*" element={<NotFoundPage />} />
+            <Route
+              path="/dashboard/overview"
+              element={
+                <DashboardPage
+                  isSidebarOpen={isSidebarOpen}
+                  onToggleSidebar={toggleSidebar}
+                />
+              }
+            />
+            <Route
+              path="/dashboard/insights"
+              element={
+                <InsightsPage
+                  isSidebarOpen={isSidebarOpen}
+                  onToggleSidebar={toggleSidebar}
+                />
+              }
+            />
+            <Route
+              path="/orders/all"
+              element={
+                <OrdersPage
+                  isSidebarOpen={isSidebarOpen}
+                  onToggleSidebar={toggleSidebar}
+                />
+              }
+            />
+            <Route
+              path="/orders/fulfillment"
+              element={
+                <FulfillmentPage
+                  isSidebarOpen={isSidebarOpen}
+                  onToggleSidebar={toggleSidebar}
+                />
+              }
+            />
+            <Route
+              path="/settings/profile"
+              element={
+                <ProfilePage
+                  isSidebarOpen={isSidebarOpen}
+                  onToggleSidebar={toggleSidebar}
+                />
+              }
+            />
+            <Route
+              path="/settings/preferences"
+              element={
+                <PreferencesPage
+                  isSidebarOpen={isSidebarOpen}
+                  onToggleSidebar={toggleSidebar}
+                />
+              }
+            />
+            <Route
+              path="/settings/theme"
+              element={
+                <ThemeSettingsPage
+                  isSidebarOpen={isSidebarOpen}
+                  onToggleSidebar={toggleSidebar}
+                  theme={{
+                    mode,
+                    setMode,
+                    paletteId,
+                    setPaletteId,
+                    fontId,
+                    setFontId,
+                  }}
+                />
+              }
+            />
+            <Route
+              path="*"
+              element={
+                <NotFoundPage
+                  isSidebarOpen={isSidebarOpen}
+                  onToggleSidebar={toggleSidebar}
+                />
+              }
+            />
           </Routes>
         </main>
       </div>
@@ -316,43 +498,132 @@ function AppShell() {
   );
 }
 
-function DashboardPage() {
+function PageHeader({
+  title,
+  subtitle,
+  actions,
+  isSidebarOpen,
+  onToggleSidebar,
+}: PageHeaderProps) {
   return (
-    <div className="page">
-      <div className="page-header">
+    <div className="page-header">
+      <div className="page-header-main">
+        <Button
+          isIconOnly
+          variant={isSidebarOpen ? "light" : "flat"}
+          aria-label="Toggle sidebar"
+          onPress={onToggleSidebar}
+          className="page-header-toggle"
+        >
+          <Menu size={18} />
+        </Button>
         <div>
-          <h1>Dashboard Overview</h1>
-          <p className="page-subtitle">Track KPIs across sales, users, and ops.</p>
-        </div>
-        <div className="page-actions">
-          <Button variant="flat">Export</Button>
-          <Button color="primary">Create report</Button>
+          <h1>{title}</h1>
+          {subtitle ? <p className="page-subtitle">{subtitle}</p> : null}
         </div>
       </div>
+      {actions ? <div className="page-actions">{actions}</div> : null}
+    </div>
+  );
+}
+
+function PageShell({ children, ...headerProps }: PageShellProps) {
+  return (
+    <div className="page-shell">
+      <PageHeader {...headerProps} />
+      <div className="page">{children}</div>
+    </div>
+  );
+}
+
+function DashboardPage({
+  isSidebarOpen,
+  onToggleSidebar,
+}: SidebarToggleProps) {
+  return (
+    <PageShell
+      title="Dashboard Overview"
+      subtitle="Track KPIs across sales, users, and ops."
+      isSidebarOpen={isSidebarOpen}
+      onToggleSidebar={onToggleSidebar}
+      actions={
+        <>
+          <Button variant="flat">Export</Button>
+          <Button color="primary">Create report</Button>
+        </>
+      }
+    >
       <div className="card-grid">
-        <Card>
-          <CardHeader>Active users</CardHeader>
-          <CardBody>
-            <div className="stat">12,480</div>
-            <Progress value={68} color="success" className="stat-progress" />
+        <Card className="metric-card metric-card--users" isBlurred shadow="sm">
+          <CardBody className="metric-media">
+            <div className="metric-media-art metric-media-art--users">AU</div>
+            <div className="metric-media-content">
+              <div className="metric-media-title">Active users</div>
+              <div className="metric-media-stat">12,480</div>
+              <div className="metric-media-meta">+6.2%</div>
+            </div>
+            <div className="metric-donut" aria-hidden="true">
+              <svg className="metric-donut-svg" viewBox="0 0 44 44">
+                <circle className="metric-donut-track" cx="22" cy="22" r="18" />
+                <circle
+                  className="metric-donut-progress"
+                  cx="22"
+                  cy="22"
+                  r="18"
+                  pathLength="100"
+                  strokeDasharray="68 100"
+                />
+              </svg>
+              <div className="metric-donut-value">68%</div>
+            </div>
           </CardBody>
         </Card>
-        <Card>
-          <CardHeader>Revenue</CardHeader>
-          <CardBody>
-            <div className="stat">$94,210</div>
-            <Chip color="success" variant="flat">
-              +12.4% MoM
-            </Chip>
+        <Card className="metric-card metric-card--revenue" isBlurred shadow="sm">
+          <CardBody className="metric-media">
+            <div className="metric-media-art metric-media-art--revenue">RV</div>
+            <div className="metric-media-content">
+              <div className="metric-media-title">Revenue</div>
+              <div className="metric-media-stat">$94,210</div>
+              <div className="metric-media-meta">+12.4%</div>
+            </div>
+            <div className="metric-donut" aria-hidden="true">
+              <svg className="metric-donut-svg" viewBox="0 0 44 44">
+                <circle className="metric-donut-track" cx="22" cy="22" r="18" />
+                <circle
+                  className="metric-donut-progress"
+                  cx="22"
+                  cy="22"
+                  r="18"
+                  pathLength="100"
+                  strokeDasharray="74 100"
+                />
+              </svg>
+              <div className="metric-donut-value">74%</div>
+            </div>
           </CardBody>
         </Card>
-        <Card>
-          <CardHeader>Open tickets</CardHeader>
-          <CardBody>
-            <div className="stat">38</div>
-            <Chip color="warning" variant="flat">
-              6 urgent
-            </Chip>
+        <Card className="metric-card metric-card--tickets" isBlurred shadow="sm">
+          <CardBody className="metric-media">
+            <div className="metric-media-art metric-media-art--tickets">OT</div>
+            <div className="metric-media-content">
+              <div className="metric-media-title">Open tickets</div>
+              <div className="metric-media-stat">38</div>
+              <div className="metric-media-meta">6 urgent</div>
+            </div>
+            <div className="metric-donut" aria-hidden="true">
+              <svg className="metric-donut-svg" viewBox="0 0 44 44">
+                <circle className="metric-donut-track" cx="22" cy="22" r="18" />
+                <circle
+                  className="metric-donut-progress"
+                  cx="22"
+                  cy="22"
+                  r="18"
+                  pathLength="100"
+                  strokeDasharray="42 100"
+                />
+              </svg>
+              <div className="metric-donut-value">42%</div>
+            </div>
           </CardBody>
         </Card>
       </div>
@@ -361,7 +632,6 @@ function DashboardPage() {
           <CardHeader className="chart-header">
             <div>
               <div className="chart-title">Revenue trend</div>
-              <div className="chart-subtitle">Last 30 days</div>
             </div>
             <Chip color="secondary" variant="flat">
               +9.2%
@@ -452,7 +722,7 @@ function DashboardPage() {
           </Table>
         </CardBody>
       </Card>
-    </div>
+    </PageShell>
   );
 }
 
@@ -571,16 +841,15 @@ function FaqAccordion() {
   );
 }
 
-function InsightsPage() {
+function InsightsPage({ isSidebarOpen, onToggleSidebar }: SidebarToggleProps) {
   return (
-    <div className="page">
-      <div className="page-header">
-        <div>
-          <h1>Insights</h1>
-          <p className="page-subtitle">Signals from product usage and growth.</p>
-        </div>
-        <Button variant="flat">Download CSV</Button>
-      </div>
+    <PageShell
+      title="Insights"
+      subtitle="Signals from product usage and growth."
+      isSidebarOpen={isSidebarOpen}
+      onToggleSidebar={onToggleSidebar}
+      actions={<Button variant="flat">Download CSV</Button>}
+    >
       <div className="card-grid">
         <Card>
           <CardHeader>Weekly retention</CardHeader>
@@ -633,20 +902,19 @@ function InsightsPage() {
           </div>
         </CardBody>
       </Card>
-    </div>
+    </PageShell>
   );
 }
 
-function OrdersPage() {
+function OrdersPage({ isSidebarOpen, onToggleSidebar }: SidebarToggleProps) {
   return (
-    <div className="page">
-      <div className="page-header">
-        <div>
-          <h1>Orders</h1>
-          <p className="page-subtitle">Filter, tag, and track every order.</p>
-        </div>
-        <Button color="primary">New order</Button>
-      </div>
+    <PageShell
+      title="Orders"
+      subtitle="Filter, tag, and track every order."
+      isSidebarOpen={isSidebarOpen}
+      onToggleSidebar={onToggleSidebar}
+      actions={<Button color="primary">New order</Button>}
+    >
       <Card>
         <CardBody className="filters">
           <Input label="Search" placeholder="Order ID or customer" />
@@ -700,20 +968,22 @@ function OrdersPage() {
           </Table>
         </CardBody>
       </Card>
-    </div>
+    </PageShell>
   );
 }
 
-function FulfillmentPage() {
+function FulfillmentPage({
+  isSidebarOpen,
+  onToggleSidebar,
+}: SidebarToggleProps) {
   return (
-    <div className="page">
-      <div className="page-header">
-        <div>
-          <h1>Fulfillment</h1>
-          <p className="page-subtitle">Prepare shipments and manage carriers.</p>
-        </div>
-        <Button variant="flat">Export labels</Button>
-      </div>
+    <PageShell
+      title="Fulfillment"
+      subtitle="Prepare shipments and manage carriers."
+      isSidebarOpen={isSidebarOpen}
+      onToggleSidebar={onToggleSidebar}
+      actions={<Button variant="flat">Export labels</Button>}
+    >
       <div className="card-grid">
         <Card>
           <CardHeader>Pick list</CardHeader>
@@ -757,23 +1027,27 @@ function FulfillmentPage() {
           </div>
         </CardBody>
       </Card>
-    </div>
+    </PageShell>
   );
 }
 
-function ProfilePage() {
+function ProfilePage({ isSidebarOpen, onToggleSidebar }: SidebarToggleProps) {
   return (
-    <div className="page">
-      <div className="page-header">
-        <div>
-          <h1>Profile</h1>
-          <p className="page-subtitle">Keep your personal details updated.</p>
-        </div>
-        <Button color="primary">Save changes</Button>
-      </div>
+    <PageShell
+      title="Profile"
+      subtitle="Keep your personal details updated."
+      isSidebarOpen={isSidebarOpen}
+      onToggleSidebar={onToggleSidebar}
+      actions={<Button color="primary">Save changes</Button>}
+    >
       <Card>
         <CardBody className="profile-grid">
-          <Avatar name="S" size="lg" color="primary" />
+          <Avatar
+            size="sm"
+            src="https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/blue.jpg"
+            alt="Small Avatar"
+            name="SM"
+          />
           <div className="profile-fields">
             <Input label="Full name" placeholder="Somchai Tech" />
             <Input label="Email" placeholder="somchai@example.com" />
@@ -781,20 +1055,22 @@ function ProfilePage() {
           </div>
         </CardBody>
       </Card>
-    </div>
+    </PageShell>
   );
 }
 
-function PreferencesPage() {
+function PreferencesPage({
+  isSidebarOpen,
+  onToggleSidebar,
+}: SidebarToggleProps) {
   return (
-    <div className="page">
-      <div className="page-header">
-        <div>
-          <h1>Preferences</h1>
-          <p className="page-subtitle">Tune notifications and workspace mode.</p>
-        </div>
-        <Button variant="flat">Reset</Button>
-      </div>
+    <PageShell
+      title="Preferences"
+      subtitle="Tune notifications and workspace mode."
+      isSidebarOpen={isSidebarOpen}
+      onToggleSidebar={onToggleSidebar}
+      actions={<Button variant="flat">Reset</Button>}
+    >
       <Card>
         <CardBody className="preferences-grid">
           <div>
@@ -814,25 +1090,89 @@ function PreferencesPage() {
           <FaqAccordion />
         </CardBody>
       </Card>
-    </div>
+    </PageShell>
   );
 }
 
-function NotFoundPage() {
+function ThemeSettingsPage({
+  isSidebarOpen,
+  onToggleSidebar,
+  theme,
+}: SidebarToggleProps & { theme: ThemeController }) {
   return (
-    <div className="page">
+    <PageShell
+      title="Theme"
+      subtitle="Pick a primary color and font family."
+      isSidebarOpen={isSidebarOpen}
+      onToggleSidebar={onToggleSidebar}
+    >
+      <Card>
+        <CardHeader>Primary color</CardHeader>
+        <CardBody>
+          <div className="theme-grid">
+            {themePalettes.map((palette) => (
+              <Button
+                key={palette.id}
+                variant="flat"
+                className={`theme-swatch${
+                  theme.paletteId === palette.id ? " is-active" : ""
+                }`}
+                onPress={() => theme.setPaletteId(palette.id)}
+                style={{
+                  background: `linear-gradient(135deg, ${palette.accent}, ${palette.accent2})`,
+                }}
+              >
+                <span className="theme-swatch-label">{palette.label}</span>
+              </Button>
+            ))}
+          </div>
+        </CardBody>
+      </Card>
+      <Card>
+        <CardHeader>Font</CardHeader>
+        <CardBody>
+          <div className="theme-fonts">
+            {themeFonts.map((font) => (
+              <Button
+                key={font.id}
+                variant={theme.fontId === font.id ? "solid" : "flat"}
+                color={theme.fontId === font.id ? "primary" : "default"}
+                className="theme-font-button"
+                onPress={() => theme.setFontId(font.id)}
+                style={{ fontFamily: font.value }}
+              >
+                {font.label}
+              </Button>
+            ))}
+          </div>
+        </CardBody>
+      </Card>
+    </PageShell>
+  );
+}
+
+function NotFoundPage({ isSidebarOpen, onToggleSidebar }: SidebarToggleProps) {
+  return (
+    <PageShell
+      title="Page not found"
+      subtitle="Try a menu link to continue."
+      isSidebarOpen={isSidebarOpen}
+      onToggleSidebar={onToggleSidebar}
+      actions={
+        <Button as={Link} to="/dashboard/overview" color="primary">
+          Go to dashboard
+        </Button>
+      }
+    >
       <Card>
         <CardBody className="notfound">
           <div>
-            <h1>Page not found</h1>
-            <p className="page-subtitle">Try a menu link to continue.</p>
+            <h2>We could not find that page.</h2>
+            <p className="page-subtitle">Check the URL or use the menu.</p>
           </div>
-          <Button as={Link} to="/dashboard/overview" color="primary">
-            Go to dashboard
-          </Button>
         </CardBody>
       </Card>
-    </div>
+    </PageShell>
   );
 }
 

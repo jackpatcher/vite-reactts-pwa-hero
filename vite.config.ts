@@ -2,8 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
-export default defineConfig({
-  base: '/vite-reactts-pwa-hero/',
+export default defineConfig(({ mode }) => ({
+  base: mode === 'production' ? '/vite-reactts-pwa-hero/' : '/',
   plugins: [
     react(),
     VitePWA({
@@ -29,4 +29,4 @@ export default defineConfig({
       }
     })
   ],
-})
+}))

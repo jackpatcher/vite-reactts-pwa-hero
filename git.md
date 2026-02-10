@@ -8,5 +8,5 @@ git push -u origin main
 
 
 git add .
-git commit -m "deploy yml"
+git commit -m "theme card repositon"
 git push -u origin main 
