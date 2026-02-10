@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type JSX, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type JSX, type ReactNode } from "react";
 import {
   Accordion,
   AccordionItem,
@@ -50,7 +50,19 @@ import "./App.css";
 
 type ThemeMode = "light" | "dark";
 
-type ThemePaletteId = "ocean" | "mint" | "sunset" | "violet";
+type ThemePaletteId =
+  | "ocean"
+  | "mint"
+  | "sunset"
+  | "violet"
+  | "emerald"
+  | "amber"
+  | "rose"
+  | "indigo"
+  | "slate"
+  | "lime"
+  | "coral"
+  | "plum";
 
 type ThemePalette = {
   id: ThemePaletteId;
@@ -164,6 +176,54 @@ const themePalettes: ThemePalette[] = [
     accent: "#7c3aed",
     accent2: "#ec4899",
   },
+  {
+    id: "emerald",
+    label: "Emerald",
+    accent: "#10b981",
+    accent2: "#34d399",
+  },
+  {
+    id: "amber",
+    label: "Amber",
+    accent: "#f59e0b",
+    accent2: "#fbbf24",
+  },
+  {
+    id: "rose",
+    label: "Rose",
+    accent: "#f43f5e",
+    accent2: "#fb7185",
+  },
+  {
+    id: "indigo",
+    label: "Indigo",
+    accent: "#4f46e5",
+    accent2: "#818cf8",
+  },
+  {
+    id: "slate",
+    label: "Slate",
+    accent: "#334155",
+    accent2: "#64748b",
+  },
+  {
+    id: "lime",
+    label: "Lime",
+    accent: "#65a30d",
+    accent2: "#a3e635",
+  },
+  {
+    id: "coral",
+    label: "Coral",
+    accent: "#fb7185",
+    accent2: "#f97316",
+  },
+  {
+    id: "plum",
+    label: "Plum",
+    accent: "#9333ea",
+    accent2: "#c084fc",
+  },
 ];
 
 const themeFonts: ThemeFont[] = [
@@ -219,18 +279,30 @@ const faqItems: FaqItem[] = [
 ];
 
 function useTheme(): ThemeController {
-  const [mode, setMode] = useState<ThemeMode>(() => {
-    const stored = localStorage.getItem("theme-mode");
-    return stored === "dark" ? "dark" : "light";
-  });
-  const [paletteId, setPaletteId] = useState<ThemePaletteId>(() => {
-    const stored = localStorage.getItem("theme-palette");
-    return (stored as ThemePaletteId) || "ocean";
-  });
-  const [fontId, setFontId] = useState<ThemeFontId>(() => {
-    const stored = localStorage.getItem("theme-font");
-    return (stored as ThemeFontId) || "space";
-  });
+  const storedTheme = (() => {
+    const raw = localStorage.getItem("Theme");
+    if (!raw) {
+      return null;
+    }
+    try {
+      return JSON.parse(raw) as {
+        mode?: ThemeMode;
+        paletteId?: ThemePaletteId;
+        fontId?: ThemeFontId;
+      };
+    } catch {
+      return null;
+    }
+  })();
+  const [mode, setMode] = useState<ThemeMode>(
+    storedTheme?.mode === "dark" ? "dark" : "light"
+  );
+  const [paletteId, setPaletteId] = useState<ThemePaletteId>(
+    storedTheme?.paletteId || "ocean"
+  );
+  const [fontId, setFontId] = useState<ThemeFontId>(
+    storedTheme?.fontId || "space"
+  );
 
   useEffect(() => {
     const root = document.documentElement;
@@ -239,7 +311,6 @@ function useTheme(): ThemeController {
     } else {
       root.classList.remove("dark");
     }
-    localStorage.setItem("theme-mode", mode);
   }, [mode]);
 
   useEffect(() => {
@@ -250,7 +321,6 @@ function useTheme(): ThemeController {
     const root = document.documentElement;
     root.style.setProperty("--app-accent", palette.accent);
     root.style.setProperty("--app-accent-2", palette.accent2);
-    localStorage.setItem("theme-palette", palette.id);
   }, [paletteId]);
 
   useEffect(() => {
@@ -260,8 +330,14 @@ function useTheme(): ThemeController {
     }
     const root = document.documentElement;
     root.style.setProperty("--app-font", font.value);
-    localStorage.setItem("theme-font", font.id);
   }, [fontId]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "Theme",
+      JSON.stringify({ mode, paletteId, fontId })
+    );
+  }, [mode, paletteId, fontId]);
 
   return {
     mode,
@@ -276,6 +352,8 @@ function useTheme(): ThemeController {
 function AppShell() {
   const { mode, setMode, paletteId, setPaletteId, fontId, setFontId } = useTheme();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [toast, setToast] = useState<string | null>(null);
+  const isFirstRender = useRef(true);
   const location = useLocation();
   const expandedKeys = useMemo(() => {
     const match = menuItems.find((item) =>
@@ -285,15 +363,38 @@ function AppShell() {
   }, [location.pathname]);
   const toggleSidebar = () => setIsSidebarOpen((current) => !current);
 
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    const palette = themePalettes.find((item) => item.id === paletteId);
+    const font = themeFonts.find((item) => item.id === fontId);
+    const messageParts = [
+      palette ? `Theme: ${palette.label}` : null,
+      font ? `Font: ${font.label}` : null,
+      `Mode: ${mode}`,
+    ].filter(Boolean);
+
+    setToast(messageParts.join(" • "));
+    const timeout = window.setTimeout(() => setToast(null), 2200);
+
+    return () => window.clearTimeout(timeout);
+  }, [mode, paletteId, fontId]);
+
   return (
     <div className="app">
+      <div className={`toast${toast ? " is-visible" : ""}`}>
+        {toast}
+      </div>
       <header className="appbar">
         <div className="appbar-inner">
           <div className="appbar-brand">
             <div className="brand-mark">HQ</div>
             <div className="brand-text">
-              <div className="brand-title">HeroUI Admin</div>
-              <div className="brand-subtitle">PWA Workspace</div>
+              <div className="brand-title">SARABUN</div>
+              <div className="brand-subtitle">STSS</div>
             </div>
           </div>
           <div className="appbar-center">
@@ -373,33 +474,29 @@ function AppShell() {
                     indicator={<ChevronDown size={16} />}
                   >
                     <div className="submenu">
-                      {item.subItems.map((sub) => (
-                        <Button
-                          key={sub.path}
-                          as={Link}
-                          to={sub.path}
-                          disableRipple
-                          variant={
-                            location.pathname === sub.path
-                              ? "solid"
-                              : "light"
-                          }
-                          color={
-                            location.pathname === sub.path
-                              ? "primary"
-                              : "default"
-                          }
-                          className="submenu-button"
-                          size="sm"
-                        >
-                          <span className="submenu-item">
-                            <span className="submenu-icon">
-                              <ChevronRight size={14} />
+                      {item.subItems.map((sub) => {
+                        const isActive = location.pathname === sub.path;
+
+                        return (
+                          <Button
+                            key={sub.path}
+                            as={Link}
+                            to={sub.path}
+                            disableRipple
+                            variant={isActive ? "solid" : "light"}
+                            color={isActive ? "primary" : "default"}
+                            className={`submenu-button${isActive ? " is-active" : ""}`}
+                            size="sm"
+                          >
+                            <span className="submenu-item">
+                              <span className="submenu-icon">
+                                <ChevronRight size={14} />
+                              </span>
+                              <span className="submenu-text">{sub.label}</span>
                             </span>
-                            <span className="submenu-text">{sub.label}</span>
-                          </span>
-                        </Button>
-                      ))}
+                          </Button>
+                        );
+                      })}
                     </div>
                   </AccordionItem>
                 ))}
@@ -1106,7 +1203,7 @@ function ThemeSettingsPage({
       isSidebarOpen={isSidebarOpen}
       onToggleSidebar={onToggleSidebar}
     >
-      <Card>
+      <Card className="soft-edge-card">
         <CardHeader>Primary color</CardHeader>
         <CardBody>
           <div className="theme-grid">
@@ -1128,7 +1225,7 @@ function ThemeSettingsPage({
           </div>
         </CardBody>
       </Card>
-      <Card>
+      <Card className="soft-edge-card">
         <CardHeader>Font</CardHeader>
         <CardBody>
           <div className="theme-fonts">
