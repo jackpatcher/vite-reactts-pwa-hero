@@ -8,5 +8,5 @@ git push -u origin main
 
 
 git add .
-git commit -m "theme card repositon"
+git commit -m "add apps"
 git push -u origin main 

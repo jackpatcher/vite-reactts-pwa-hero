@@ -46,6 +46,12 @@ import {
   Routes,
   useLocation,
 } from "react-router-dom";
+import ThemeSettingsPage from "./pages/ThemeSettingsPage";
+import QuickAppsBar from "./components/QuickAppsBar";
+import AppsListPage from "./pages/AppsListPage";
+import MiniAppShell from "./pages/apps/AppShell";
+import AppPage from "./pages/apps/AppPage";
+import { apps } from "./data/apps";
 import "./App.css";
 
 type ThemeMode = "light" | "dark";
@@ -117,7 +123,7 @@ type ThemeController = {
   setFontId: (id: ThemeFontId) => void;
 };
 
-const menuItems: MenuItem[] = [
+const baseMenuItems: MenuItem[] = [
   {
     id: "dashboard",
     label: "Dashboard",
@@ -353,14 +359,42 @@ function AppShell() {
   const { mode, setMode, paletteId, setPaletteId, fontId, setFontId } = useTheme();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
+  const [installedApps, setInstalledApps] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem("installedApps:v1");
+      return raw ? (JSON.parse(raw) as string[]) : [];
+    } catch {
+      return [];
+    }
+  });
   const isFirstRender = useRef(true);
   const location = useLocation();
+  const menuItems = useMemo(() => {
+    const installed = apps.filter((app) => installedApps.includes(app.id));
+    return [
+      ...baseMenuItems.slice(0, 1),
+      {
+        id: "apps",
+        label: "Apps",
+        icon: <Box size={18} />,
+        basePath: "/apps",
+        subItems: [
+          { label: "All Apps", path: "/apps" },
+          ...installed.map((app) => ({
+            label: app.name,
+            path: `/apps/${app.id}/${app.pages[0]?.path ?? ""}`,
+          })),
+        ],
+      },
+      ...baseMenuItems.slice(1),
+    ];
+  }, [installedApps]);
   const expandedKeys = useMemo(() => {
     const match = menuItems.find((item) =>
       location.pathname.startsWith(item.basePath)
     );
     return match ? [match.id] : [];
-  }, [location.pathname]);
+  }, [location.pathname, menuItems]);
   const toggleSidebar = () => setIsSidebarOpen((current) => !current);
 
   useEffect(() => {
@@ -382,6 +416,51 @@ function AppShell() {
 
     return () => window.clearTimeout(timeout);
   }, [mode, paletteId, fontId]);
+
+  useEffect(() => {
+    function handleInstalledUpdated(event: Event) {
+      const detail = (event as CustomEvent<{ installed?: string[] }>).detail;
+      if (detail?.installed) {
+        setInstalledApps(detail.installed);
+      } else {
+        try {
+          const raw = localStorage.getItem("installedApps:v1");
+          setInstalledApps(raw ? (JSON.parse(raw) as string[]) : []);
+        } catch {
+          setInstalledApps([]);
+        }
+      }
+    }
+
+    window.addEventListener("installed:updated", handleInstalledUpdated);
+    window.addEventListener("storage", handleInstalledUpdated);
+    return () => {
+      window.removeEventListener("installed:updated", handleInstalledUpdated);
+      window.removeEventListener("storage", handleInstalledUpdated);
+    };
+  }, []);
+
+  useEffect(() => {
+    function handleFavoritesUpdated(event: Event) {
+      const detail = (event as CustomEvent<{ favorites?: string[] }>).detail;
+      const list = detail?.favorites ?? [];
+      const names = list
+        .map((id) => apps.find((app) => app.id === id)?.name)
+        .filter(Boolean) as string[];
+
+      if (names.length === 0) {
+        setToast("Favorites cleared");
+      } else {
+        setToast(`Favorites: ${names.join(", ")}`);
+      }
+
+      const timeout = window.setTimeout(() => setToast(null), 2200);
+      return () => window.clearTimeout(timeout);
+    }
+
+    window.addEventListener("favorites:updated", handleFavoritesUpdated);
+    return () => window.removeEventListener("favorites:updated", handleFavoritesUpdated);
+  }, []);
 
   return (
     <div className="app">
@@ -412,6 +491,8 @@ function AppShell() {
           <div className="appbar-actions">
  
    
+            <QuickAppsBar />
+            
             <Button
               isIconOnly
               variant="flat"
@@ -579,6 +660,11 @@ function AppShell() {
                 />
               }
             />
+            <Route path="/apps" element={<AppsListPage isSidebarOpen={isSidebarOpen} onToggleSidebar={toggleSidebar} />} />
+            <Route path="/apps/:appId" element={<MiniAppShell isSidebarOpen={isSidebarOpen} onToggleSidebar={toggleSidebar} />}>
+              <Route path=":page" element={<AppPage />} />
+              <Route index element={<AppPage />} />
+            </Route>
             <Route
               path="*"
               element={
@@ -1191,62 +1277,7 @@ function PreferencesPage({
   );
 }
 
-function ThemeSettingsPage({
-  isSidebarOpen,
-  onToggleSidebar,
-  theme,
-}: SidebarToggleProps & { theme: ThemeController }) {
-  return (
-    <PageShell
-      title="Theme"
-      subtitle="Pick a primary color and font family."
-      isSidebarOpen={isSidebarOpen}
-      onToggleSidebar={onToggleSidebar}
-    >
-      <Card className="soft-edge-card">
-        <CardHeader>Primary color</CardHeader>
-        <CardBody>
-          <div className="theme-grid">
-            {themePalettes.map((palette) => (
-              <Button
-                key={palette.id}
-                variant="flat"
-                className={`theme-swatch${
-                  theme.paletteId === palette.id ? " is-active" : ""
-                }`}
-                onPress={() => theme.setPaletteId(palette.id)}
-                style={{
-                  background: `linear-gradient(135deg, ${palette.accent}, ${palette.accent2})`,
-                }}
-              >
-                <span className="theme-swatch-label">{palette.label}</span>
-              </Button>
-            ))}
-          </div>
-        </CardBody>
-      </Card>
-      <Card className="soft-edge-card">
-        <CardHeader>Font</CardHeader>
-        <CardBody>
-          <div className="theme-fonts">
-            {themeFonts.map((font) => (
-              <Button
-                key={font.id}
-                variant={theme.fontId === font.id ? "solid" : "flat"}
-                color={theme.fontId === font.id ? "primary" : "default"}
-                className="theme-font-button"
-                onPress={() => theme.setFontId(font.id)}
-                style={{ fontFamily: font.value }}
-              >
-                {font.label}
-              </Button>
-            ))}
-          </div>
-        </CardBody>
-      </Card>
-    </PageShell>
-  );
-}
+// ThemeSettingsPage moved to src/pages/ThemeSettingsPage.tsx
 
 function NotFoundPage({ isSidebarOpen, onToggleSidebar }: SidebarToggleProps) {
   return (
