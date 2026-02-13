@@ -4,37 +4,12 @@ import AppCard from "../components/AppCard";
 import PageShell from "../components/PageShell";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@heroui/react";
-
-const FAVORITES_KEY = "favoriteApps:v1";
-const INSTALLED_KEY = "installedApps:v1";
-
-function readFavorites(): string[] {
-  try {
-    const raw = localStorage.getItem(FAVORITES_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-function writeFavorites(list: string[]) {
-  localStorage.setItem(FAVORITES_KEY, JSON.stringify(list));
-}
-
-function readInstalled(): string[] {
-  try {
-    const raw = localStorage.getItem(INSTALLED_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-function writeInstalled(list: string[]) {
-  localStorage.setItem(INSTALLED_KEY, JSON.stringify(list));
-}
+import {
+  readFavorites,
+  readInstalled,
+  writeFavorites,
+  writeInstalled,
+} from "../lib/appStorage";
 
 export default function AppsListPage({ isSidebarOpen, onToggleSidebar }: { isSidebarOpen: boolean; onToggleSidebar: () => void }) {
   const [favorites, setFavorites] = useState<string[]>(readFavorites());

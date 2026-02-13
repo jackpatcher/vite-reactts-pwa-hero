@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Button,
   Modal,
@@ -6,27 +6,12 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  Tooltip,
 } from "@heroui/react";
-import { ArrowDownToBracket, InfoCircle, Star, TrashBin } from "flowbite-react-icons/outline";
+import { ArrowDownToBracket, InfoCircle, Star as StarOutline, TrashBin } from "flowbite-react-icons/outline";
+import { Star as StarSolid } from "flowbite-react-icons/solid";
 import AppIcon from "./AppIcon";
-
-const APP_TAGS_KEY = "appTags:v1";
-
-type TagStore = Record<string, string[]>;
-
-function readTags(): TagStore {
-  try {
-    const raw = localStorage.getItem(APP_TAGS_KEY);
-    if (!raw) return {};
-    return JSON.parse(raw) as TagStore;
-  } catch {
-    return {};
-  }
-}
-
-function writeTags(store: TagStore) {
-  localStorage.setItem(APP_TAGS_KEY, JSON.stringify(store));
-}
+import { readTags, writeTags } from "../lib/appStorage";
 
 type AppCardProps = {
   id: string;
@@ -90,53 +75,72 @@ export default function AppCard({
 
   return (
     <div className="app-card">
-      <div className="app-card-inner" onClick={onOpen}>
-        <span className="app-card-avatar app-icon" aria-hidden="true">
+      <div className="app-card-inner">
+        <button
+          type="button"
+          className="app-card-avatar app-icon"
+          onClick={onOpen}
+          aria-label={`Open ${name}`}
+        >
           <AppIcon appId={id} color={color} size={22} />
-        </span>
+        </button>
         <div className="app-card-text">
           <div className="app-card-name">{name}</div>
           {description ? <div className="app-card-description">{description}</div> : null}
           <div className="app-card-actions">
             {isInstalled ? (
+              <Tooltip
+                placement="bottom"
+                content={
+                  <span className="app-tooltip">{isFavorite ? "Unfavorite" : "Favorite"}</span>
+                }
+              >
+                <Button
+                  isIconOnly
+                  variant="flat"
+                  onPress={onToggleFavorite.bind(null, id)}
+                  onClick={(event) => event.stopPropagation()}
+                  aria-label={`${isFavorite ? "Unfavorite" : "Favorite"} ${name}`}
+                >
+                  {isFavorite ? (
+                    <StarSolid size={16} color="#f6c94d" />
+                  ) : (
+                    <StarOutline size={16} />
+                  )}
+                </Button>
+              </Tooltip>
+            ) : null}
+            <Tooltip
+              placement="bottom"
+              content={<span className="app-tooltip">Details</span>}
+            >
               <Button
                 isIconOnly
                 variant="flat"
-                onPress={(event) => {
-                  event?.stopPropagation?.();
-                  onToggleFavorite(id);
-                }}
+                onPress={() => setIsOpen(true)}
                 onClick={(event) => event.stopPropagation()}
-                aria-label={`${isFavorite ? "Unfavorite" : "Favorite"} ${name}`}
+                aria-label={`Read more about ${name}`}
               >
-                <Star size={16} color={isFavorite ? "#f6c94d" : undefined} />
+                <InfoCircle size={16} />
               </Button>
-            ) : null}
-            <Button
-              isIconOnly
-              variant="flat"
-              onPress={(event) => {
-                event?.stopPropagation?.();
-                setIsOpen(true);
-              }}
-              onClick={(event) => event.stopPropagation()}
-              aria-label={`Read more about ${name}`}
+            </Tooltip>
+            <Tooltip
+              placement="bottom"
+              content={
+                <span className="app-tooltip">{isInstalled ? "Uninstall" : "Install"}</span>
+              }
             >
-              <InfoCircle size={16} />
-            </Button>
-            <Button
-              isIconOnly
-              variant={isInstalled ? "flat" : "solid"}
-              color={isInstalled ? "default" : "primary"}
-              onPress={(event) => {
-                event?.stopPropagation?.();
-                onToggleInstall(id);
-              }}
-              onClick={(event) => event.stopPropagation()}
-              aria-label={isInstalled ? `Uninstall ${name}` : `Install ${name}`}
-            >
-              {isInstalled ? <TrashBin size={16} /> : <ArrowDownToBracket size={16} />}
-            </Button>
+              <Button
+                isIconOnly
+                variant={isInstalled ? "flat" : "solid"}
+                color={isInstalled ? "default" : "primary"}
+                onPress={onToggleInstall.bind(null, id)}
+                onClick={(event) => event.stopPropagation()}
+                aria-label={isInstalled ? `Uninstall ${name}` : `Install ${name}`}
+              >
+                {isInstalled ? <TrashBin size={16} /> : <ArrowDownToBracket size={16} />}
+              </Button>
+            </Tooltip>
           </div>
         </div>
       </div>

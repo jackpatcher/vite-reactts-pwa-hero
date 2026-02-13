@@ -1,15 +1,31 @@
 import { Button } from "@heroui/react";
 import PageShell from "../components/PageShell";
 
+type ThemePaletteId =
+  | "ocean"
+  | "mint"
+  | "sunset"
+  | "violet"
+  | "emerald"
+  | "amber"
+  | "rose"
+  | "indigo"
+  | "slate"
+  | "lime"
+  | "coral"
+  | "plum";
+
 type ThemePalette = {
-  id: string;
+  id: ThemePaletteId;
   label: string;
   accent: string;
   accent2: string;
 };
 
+type ThemeFontId = "space" | "sarabun";
+
 type ThemeFont = {
-  id: string;
+  id: ThemeFontId;
   label: string;
   value: string;
 };
@@ -42,10 +58,10 @@ type SidebarToggleProps = {
 type ThemeController = {
   mode: string;
   setMode: (v: any) => void;
-  paletteId: string;
-  setPaletteId: (id: string) => void;
-  fontId: string;
-  setFontId: (id: string) => void;
+  paletteId: ThemePaletteId;
+  setPaletteId: (id: ThemePaletteId) => void;
+  fontId: ThemeFontId;
+  setFontId: (id: ThemeFontId) => void;
 };
 
 export default function ThemeSettingsPage({

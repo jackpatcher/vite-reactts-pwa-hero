@@ -4,34 +4,13 @@ import { Button } from "@heroui/react";
 import { Grid } from "flowbite-react-icons/outline";
 import { apps as appsData } from "../data/apps";
 import AppIcon from "./AppIcon";
-
-const FAVORITES_KEY = "favoriteApps:v1";
-const FAVORITES_LAUNCHER_KEY = "favoriteApps:launcher:v1";
-
-function readFavorites(): string[] {
-  try {
-    const raw = localStorage.getItem(FAVORITES_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-function readLauncherSelection(): string | null {
-  try {
-    const raw = localStorage.getItem(FAVORITES_LAUNCHER_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as { selectedId?: string };
-    return parsed?.selectedId ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function writeLauncherSelection(selectedId: string | null) {
-  localStorage.setItem(FAVORITES_LAUNCHER_KEY, JSON.stringify({ selectedId }));
-}
+import {
+  readFavorites,
+  readInstalled,
+  readLauncherSelection,
+  writeFavorites,
+  writeLauncherSelection,
+} from "../lib/appStorage";
 
 export default function QuickAppsBar() {
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -43,12 +22,7 @@ export default function QuickAppsBar() {
   useEffect(() => {
     setFavorites(readFavorites());
     setSelectedId(readLauncherSelection());
-    try {
-      const raw = localStorage.getItem("installedApps:v1");
-      setInstalled(raw ? (JSON.parse(raw) as string[]) : []);
-    } catch {
-      setInstalled([]);
-    }
+    setInstalled(readInstalled());
   }, []);
 
   useEffect(() => {
@@ -75,12 +49,7 @@ export default function QuickAppsBar() {
       if (detail?.installed) {
         setInstalled(detail.installed);
       } else {
-        try {
-          const raw = localStorage.getItem("installedApps:v1");
-          setInstalled(raw ? (JSON.parse(raw) as string[]) : []);
-        } catch {
-          setInstalled([]);
-        }
+        setInstalled(readInstalled());
       }
     }
 
@@ -124,7 +93,7 @@ export default function QuickAppsBar() {
   useEffect(() => {
     const filtered = favorites.filter((id) => installed.includes(id));
     if (filtered.length !== favorites.length) {
-      localStorage.setItem("favoriteApps:v1", JSON.stringify(filtered));
+      writeFavorites(filtered);
       setFavorites(filtered);
       const dispatch = () =>
         window.dispatchEvent(new CustomEvent("favorites:updated", { detail: { favorites: filtered } }));

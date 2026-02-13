@@ -52,6 +52,7 @@ import AppsListPage from "./pages/AppsListPage";
 import MiniAppShell from "./pages/apps/AppShell";
 import AppPage from "./pages/apps/AppPage";
 import { apps } from "./data/apps";
+import { readInstalled, readTheme, writeTheme } from "./lib/appStorage";
 import "./App.css";
 
 type ThemeMode = "light" | "dark";
@@ -285,29 +286,15 @@ const faqItems: FaqItem[] = [
 ];
 
 function useTheme(): ThemeController {
-  const storedTheme = (() => {
-    const raw = localStorage.getItem("Theme");
-    if (!raw) {
-      return null;
-    }
-    try {
-      return JSON.parse(raw) as {
-        mode?: ThemeMode;
-        paletteId?: ThemePaletteId;
-        fontId?: ThemeFontId;
-      };
-    } catch {
-      return null;
-    }
-  })();
+  const storedTheme = readTheme();
   const [mode, setMode] = useState<ThemeMode>(
     storedTheme?.mode === "dark" ? "dark" : "light"
   );
   const [paletteId, setPaletteId] = useState<ThemePaletteId>(
-    storedTheme?.paletteId || "ocean"
+    (storedTheme?.paletteId as ThemePaletteId) || "ocean"
   );
   const [fontId, setFontId] = useState<ThemeFontId>(
-    storedTheme?.fontId || "space"
+    (storedTheme?.fontId as ThemeFontId) || "space"
   );
 
   useEffect(() => {
@@ -339,10 +326,7 @@ function useTheme(): ThemeController {
   }, [fontId]);
 
   useEffect(() => {
-    localStorage.setItem(
-      "Theme",
-      JSON.stringify({ mode, paletteId, fontId })
-    );
+    writeTheme({ mode, paletteId, fontId });
   }, [mode, paletteId, fontId]);
 
   return {
@@ -360,12 +344,7 @@ function AppShell() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [installedApps, setInstalledApps] = useState<string[]>(() => {
-    try {
-      const raw = localStorage.getItem("installedApps:v1");
-      return raw ? (JSON.parse(raw) as string[]) : [];
-    } catch {
-      return [];
-    }
+    return readInstalled();
   });
   const isFirstRender = useRef(true);
   const location = useLocation();
@@ -423,12 +402,7 @@ function AppShell() {
       if (detail?.installed) {
         setInstalledApps(detail.installed);
       } else {
-        try {
-          const raw = localStorage.getItem("installedApps:v1");
-          setInstalledApps(raw ? (JSON.parse(raw) as string[]) : []);
-        } catch {
-          setInstalledApps([]);
-        }
+        setInstalledApps(readInstalled());
       }
     }
 
@@ -472,8 +446,8 @@ function AppShell() {
           <div className="appbar-brand">
             <div className="brand-mark">HQ</div>
             <div className="brand-text">
-              <div className="brand-title">SARABUN</div>
-              <div className="brand-subtitle">STSS</div>
+              <div className="brand-title">Ambridge</div>
+              <div className="brand-subtitle">PLATFORM</div>
             </div>
           </div>
           <div className="appbar-center">

@@ -8,5 +8,5 @@ git push -u origin main
 
 
 git add .
-git commit -m "add apps"
+git commit -m "loclStrg comp,apps icon"
 git push -u origin main 
