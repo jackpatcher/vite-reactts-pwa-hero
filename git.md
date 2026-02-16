@@ -8,5 +8,5 @@ git push -u origin main
 
 
 git add .
-git commit -m "loclStrg comp,apps icon"
+git commit -m "fav outtline"
 git push -u origin main 
