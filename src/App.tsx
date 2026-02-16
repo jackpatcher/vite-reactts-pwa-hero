@@ -33,10 +33,10 @@ import {
   Receipt,
   RotateCcw,
   Search,
-  ShoppingBag,
   Settings,
- 
+  ShoppingBag,
   Sun,
+  Wrench,
 } from "lucide-react";
 import {
   BrowserRouter,
@@ -45,15 +45,24 @@ import {
   Route,
   Routes,
   useLocation,
+  useNavigate,
 } from "react-router-dom";
 import ThemeSettingsPage from "./pages/ThemeSettingsPage";
 import QuickAppsBar from "./components/QuickAppsBar";
 import AppsListPage from "./pages/AppsListPage";
 import MiniAppShell from "./pages/apps/AppShell";
 import AppPage from "./pages/apps/AppPage";
+import DevToolsPage from "./pages/DevToolsPage";
 import { apps } from "./data/apps";
-import { readInstalled, readTheme, writeTheme } from "./lib/appStorage";
+import { completeFirstTimeSetup, writeTheme } from "./lib/appStorage";
+import { FirstimeSetupFlow } from "./modules/firsttimeSetup";
+import {
+  useInstalledApps,
+  useIsFirstTime,
+  useTheme as useThemeStorage,
+} from "./modules/storage";
 import "./App.css";
+import { ToastProvider } from "./components/ToastContext";
 
 type ThemeMode = "light" | "dark";
 
@@ -154,6 +163,15 @@ const baseMenuItems: MenuItem[] = [
       { label: "Profile", path: "/settings/profile" },
       { label: "Preferences", path: "/settings/preferences" },
       { label: "Theme", path: "/settings/theme" },
+    ],
+  },
+  {
+    id: "devtools",
+    label: "DevTools",
+    icon: <Wrench size={18} />,
+    basePath: "/devtools",
+    subItems: [
+      { label: "Database Viewer", path: "/devtools" },
     ],
   },
 ];
@@ -286,16 +304,32 @@ const faqItems: FaqItem[] = [
 ];
 
 function useTheme(): ThemeController {
-  const storedTheme = readTheme();
-  const [mode, setMode] = useState<ThemeMode>(
-    storedTheme?.mode === "dark" ? "dark" : "light"
-  );
-  const [paletteId, setPaletteId] = useState<ThemePaletteId>(
-    (storedTheme?.paletteId as ThemePaletteId) || "ocean"
-  );
-  const [fontId, setFontId] = useState<ThemeFontId>(
-    (storedTheme?.fontId as ThemeFontId) || "space"
-  );
+  // ใช้ useLiveQuery เพื่ออ่านข้อมูล theme แบบ reactive
+  const storedTheme = useThemeStorage();
+  const [mode, setMode] = useState<ThemeMode>("light");
+  const [paletteId, setPaletteId] = useState<ThemePaletteId>("ocean");
+  const [fontId, setFontId] = useState<ThemeFontId>("space");
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Sync stored theme to local state
+  useEffect(() => {
+    if (storedTheme) {
+      setMode(storedTheme.mode === "dark" ? "dark" : "light");
+
+      const palette = themePalettes.find(
+        (item) => item.id === storedTheme.paletteId
+      );
+      if (palette) {
+        setPaletteId(palette.id);
+      }
+
+      const font = themeFonts.find((item) => item.id === storedTheme.fontId);
+      if (font) {
+        setFontId(font.id);
+      }
+    }
+    setIsHydrated(true);
+  }, [storedTheme]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -326,8 +360,9 @@ function useTheme(): ThemeController {
   }, [fontId]);
 
   useEffect(() => {
-    writeTheme({ mode, paletteId, fontId });
-  }, [mode, paletteId, fontId]);
+    if (!isHydrated) return;
+    void writeTheme({ mode, paletteId, fontId });
+  }, [mode, paletteId, fontId, isHydrated]);
 
   return {
     mode,
@@ -343,11 +378,14 @@ function AppShell() {
   const { mode, setMode, paletteId, setPaletteId, fontId, setFontId } = useTheme();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
-  const [installedApps, setInstalledApps] = useState<string[]>(() => {
-    return readInstalled();
-  });
+
+  // ใช้ useLiveQuery - จะอัพเดทอัตโนมัติเมื่อข้อมูลเปลี่ยน
+  const installedApps: string[] = useInstalledApps() ?? [];
+  const isFirstTime: boolean | undefined = useIsFirstTime();
+
   const isFirstRender = useRef(true);
   const location = useLocation();
+  const navigate = useNavigate();
   const menuItems = useMemo(() => {
     const installed = apps.filter((app) => installedApps.includes(app.id));
     return [
@@ -376,6 +414,11 @@ function AppShell() {
   }, [location.pathname, menuItems]);
   const toggleSidebar = () => setIsSidebarOpen((current) => !current);
 
+  const handlefirstTImeSetupComplete = () => {
+    void completeFirstTimeSetup();
+    // isFirstTime จะอัพเดทอัตโนมัติผ่าน useLiveQuery
+  };
+
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
@@ -395,24 +438,6 @@ function AppShell() {
 
     return () => window.clearTimeout(timeout);
   }, [mode, paletteId, fontId]);
-
-  useEffect(() => {
-    function handleInstalledUpdated(event: Event) {
-      const detail = (event as CustomEvent<{ installed?: string[] }>).detail;
-      if (detail?.installed) {
-        setInstalledApps(detail.installed);
-      } else {
-        setInstalledApps(readInstalled());
-      }
-    }
-
-    window.addEventListener("installed:updated", handleInstalledUpdated);
-    window.addEventListener("storage", handleInstalledUpdated);
-    return () => {
-      window.removeEventListener("installed:updated", handleInstalledUpdated);
-      window.removeEventListener("storage", handleInstalledUpdated);
-    };
-  }, []);
 
   useEffect(() => {
     function handleFavoritesUpdated(event: Event) {
@@ -436,222 +461,239 @@ function AppShell() {
     return () => window.removeEventListener("favorites:updated", handleFavoritesUpdated);
   }, []);
 
+  // รอให้ useLiveQuery โหลดข้อมูลเสร็จก่อน
+  if (isFirstTime === undefined) {
+    return <div className="app-loading">Loading...</div>;
+  }
+
+  if (isFirstTime) {
+    return <FirstimeSetupFlow />;
+  }
+
   return (
-    <div className="app">
-      <div className={`toast${toast ? " is-visible" : ""}`}>
-        {toast}
-      </div>
-      <header className="appbar">
-        <div className="appbar-inner">
-          <div className="appbar-brand">
-            <div className="brand-mark">HQ</div>
-            <div className="brand-text">
-              <div className="brand-title">Ambridge</div>
-              <div className="brand-subtitle">PLATFORM</div>
+    <ToastProvider>
+      <div className="app">
+        <div className={`toast${toast ? " is-visible" : ""}`}>
+          {toast}
+        </div>
+        <header className="appbar">
+          <div className="appbar-inner">
+            <div className="appbar-brand">
+              <div className="brand-mark">HQ</div>
+              <div className="brand-text">
+                <div className="brand-title">Ambridge</div>
+                <div className="brand-subtitle">PLATFORM</div>
+              </div>
             </div>
-          </div>
-          <div className="appbar-center">
-            <div className="appbar-search-wrap">
-              <Input
-                aria-label="Search"
-                placeholder="Search  "
-                startContent={<Search size={16} />}
+            <div className="appbar-center">
+              <div className="appbar-search-wrap">
+                <Input
+                  aria-label="Search"
+                  placeholder="Search  "
+                  startContent={<Search size={16} />}
+                  variant="flat"
+                  size="sm"
+                  className="appbar-search"
+                />
+              </div>
+            </div>
+            <div className="appbar-actions">
+              <QuickAppsBar />
+              <Button
+                isIconOnly
                 variant="flat"
+                aria-label={
+                  mode === "dark" ? "Switch to light mode" : "Switch to dark mode"
+                }
+                onPress={() =>
+                  setMode((current: ThemeMode) => (current === "dark" ? "light" : "dark"))
+                }
+                className="theme-toggle"
+              >
+                {mode === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+              </Button>  
+              <Avatar
+                showFallback
+                name="Jane"
                 size="sm"
-                className="appbar-search"
+                className="appbar-avatar w-6 h-6 text-tiny"
+                src="https://i.pravatar.cc/150?u=a042581f4e29026024d"
               />
             </div>
           </div>
-          <div className="appbar-actions">
- 
-   
-            <QuickAppsBar />
-            
-            <Button
-              isIconOnly
-              variant="flat"
-              aria-label={
-                mode === "dark" ? "Switch to light mode" : "Switch to dark mode"
-              }
-              onPress={() =>
-                setMode((current: ThemeMode) => (current === "dark" ? "light" : "dark"))
-              }
-              className="theme-toggle"
-            >
-              {mode === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-            </Button>  
-                         
-            <Avatar
-             
-              showFallback
-              name="Jane"
-              size="sm"
-              className="appbar-avatar w-6 h-6 text-tiny"
-              src="https://i.pravatar.cc/150?u=a042581f4e29026024d"
-            />
-          
-          </div>
-        </div>
-      </header>
+        </header>
 
-      <div className={`layout ${isSidebarOpen ? "" : "sidebar-hidden"}`}>
-        <aside className="sidebar">
-          <Card className="sidebar-card">
-            <CardHeader className="sidebar-header">
-              <div>
-                <div className="sidebar-title">Workspace</div>
-                <div className="sidebar-caption">HeroUI Kit</div>
-              </div>
-              <div className="sidebar-actions">
-                <Chip size="sm" color="primary" variant="flat">
-                  v4
-                </Chip>
-              </div>
-            </CardHeader>
-            <Divider />
-            <CardBody className="sidebar-body">
-              <Accordion
-                selectionMode="single"
-                variant="shadow"
-                className="sidebar-accordion"
-                defaultExpandedKeys={expandedKeys}
-              >
-                {menuItems.map((item) => (
-                  <AccordionItem
-                    key={item.id}
-                    aria-label={item.label}
-                    title={
-                      <div className="menu-title">
-                        <span className="menu-icon">{item.icon}</span>
-                        <span className="menu-label">{item.label}</span>
-                      </div>
-                    }
-                    indicator={<ChevronDown size={16} />}
-                  >
-                    <div className="submenu">
-                      {item.subItems.map((sub) => {
-                        const isActive = location.pathname === sub.path;
+        <div className={`layout ${isSidebarOpen ? "" : "sidebar-hidden"}`}>
+          <aside className="sidebar">
+            <Card className="sidebar-card">
+              <CardHeader className="sidebar-header">
+                <div>
+                  <div className="sidebar-title">STSS</div>
+                  <div className="sidebar-caption">School</div>
+                </div>
+                <div className="sidebar-actions">
+                  <Chip size="sm" color="primary" variant="flat">
+                    v4
+                  </Chip>
+                </div>
+              </CardHeader>
+              <Divider />
+              <CardBody className="sidebar-body">
+                <Accordion
+                  selectionMode="single"
+                  variant="shadow"
+                  className="sidebar-accordion"
+                  defaultExpandedKeys={expandedKeys}
+                >
+                  {menuItems.map((item) => (
+                    <AccordionItem
+                      key={item.id}
+                      aria-label={item.label}
+                      title={
+                        <div className="menu-title">
+                          <span className="menu-icon">{item.icon}</span>
+                          <span className="menu-label">{item.label}</span>
+                        </div>
+                      }
+                      indicator={<ChevronDown size={16} />}
+                    >
+                      <div className="submenu">
+                        {item.subItems.map((sub) => {
+                          const isActive = location.pathname === sub.path;
 
-                        return (
-                          <Button
-                            key={sub.path}
-                            as={Link}
-                            to={sub.path}
-                            disableRipple
-                            variant={isActive ? "solid" : "light"}
-                            color={isActive ? "primary" : "default"}
-                            className={`submenu-button${isActive ? " is-active" : ""}`}
-                            size="sm"
-                          >
-                            <span className="submenu-item">
-                              <span className="submenu-icon">
-                                <ChevronRight size={14} />
+                          return (
+                            <Button
+                              key={sub.path}
+                              as={Link}
+                              to={sub.path}
+                              disableRipple
+                              variant={isActive ? "solid" : "light"}
+                              color={isActive ? "primary" : "default"}
+                              className={`submenu-button${isActive ? " is-active" : ""}`}
+                              size="sm"
+                            >
+                              <span className="submenu-item">
+                                <span className="submenu-icon">
+                                  <ChevronRight size={14} />
+                                </span>
+                                <span className="submenu-text">{sub.label}</span>
                               </span>
-                              <span className="submenu-text">{sub.label}</span>
-                            </span>
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  </AccordionItem>
-                ))}
-              </Accordion>
-            </CardBody>
-          </Card>
-        </aside>
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </CardBody>
+            </Card>
+          </aside>
 
-        <main className="content">
-          <Routes>
-            <Route path="/" element={<Navigate to="/dashboard/overview" />} />
-            <Route
-              path="/dashboard/overview"
-              element={
-                <DashboardPage
-                  isSidebarOpen={isSidebarOpen}
-                  onToggleSidebar={toggleSidebar}
-                />
-              }
-            />
-            <Route
-              path="/dashboard/insights"
-              element={
-                <InsightsPage
-                  isSidebarOpen={isSidebarOpen}
-                  onToggleSidebar={toggleSidebar}
-                />
-              }
-            />
-            <Route
-              path="/orders/all"
-              element={
-                <OrdersPage
-                  isSidebarOpen={isSidebarOpen}
-                  onToggleSidebar={toggleSidebar}
-                />
-              }
-            />
-            <Route
-              path="/orders/fulfillment"
-              element={
-                <FulfillmentPage
-                  isSidebarOpen={isSidebarOpen}
-                  onToggleSidebar={toggleSidebar}
-                />
-              }
-            />
-            <Route
-              path="/settings/profile"
-              element={
-                <ProfilePage
-                  isSidebarOpen={isSidebarOpen}
-                  onToggleSidebar={toggleSidebar}
-                />
-              }
-            />
-            <Route
-              path="/settings/preferences"
-              element={
-                <PreferencesPage
-                  isSidebarOpen={isSidebarOpen}
-                  onToggleSidebar={toggleSidebar}
-                />
-              }
-            />
-            <Route
-              path="/settings/theme"
-              element={
-                <ThemeSettingsPage
-                  isSidebarOpen={isSidebarOpen}
-                  onToggleSidebar={toggleSidebar}
-                  theme={{
-                    mode,
-                    setMode,
-                    paletteId,
-                    setPaletteId,
-                    fontId,
-                    setFontId,
-                  }}
-                />
-              }
-            />
-            <Route path="/apps" element={<AppsListPage isSidebarOpen={isSidebarOpen} onToggleSidebar={toggleSidebar} />} />
-            <Route path="/apps/:appId" element={<MiniAppShell isSidebarOpen={isSidebarOpen} onToggleSidebar={toggleSidebar} />}>
-              <Route path=":page" element={<AppPage />} />
-              <Route index element={<AppPage />} />
-            </Route>
-            <Route
-              path="*"
-              element={
-                <NotFoundPage
-                  isSidebarOpen={isSidebarOpen}
-                  onToggleSidebar={toggleSidebar}
-                />
-              }
-            />
-          </Routes>
-        </main>
+          <main className="content">
+            <Routes>
+              <Route path="/" element={<Navigate to="/dashboard/overview" />} />
+              <Route
+                path="/dashboard/overview"
+                element={
+                  <DashboardPage
+                    isSidebarOpen={isSidebarOpen}
+                    onToggleSidebar={toggleSidebar}
+                  />
+                }
+              />
+              <Route
+                path="/dashboard/insights"
+                element={
+                  <InsightsPage
+                    isSidebarOpen={isSidebarOpen}
+                    onToggleSidebar={toggleSidebar}
+                  />
+                }
+              />
+              <Route
+                path="/orders/all"
+                element={
+                  <OrdersPage
+                    isSidebarOpen={isSidebarOpen}
+                    onToggleSidebar={toggleSidebar}
+                  />
+                }
+              />
+              <Route
+                path="/orders/fulfillment"
+                element={
+                  <FulfillmentPage
+                    isSidebarOpen={isSidebarOpen}
+                    onToggleSidebar={toggleSidebar}
+                  />
+                }
+              />
+              <Route
+                path="/settings/profile"
+                element={
+                  <ProfilePage
+                    isSidebarOpen={isSidebarOpen}
+                    onToggleSidebar={toggleSidebar}
+                  />
+                }
+              />
+              <Route
+                path="/settings/preferences"
+                element={
+                  <PreferencesPage
+                    isSidebarOpen={isSidebarOpen}
+                    onToggleSidebar={toggleSidebar}
+                  />
+                }
+              />
+              <Route
+                path="/settings/theme"
+                element={
+                  <ThemeSettingsPage
+                    isSidebarOpen={isSidebarOpen}
+                    onToggleSidebar={toggleSidebar}
+                    theme={{
+                      mode,
+                      setMode,
+                      paletteId,
+                      setPaletteId,
+                      fontId,
+                      setFontId,
+                    }}
+                  />
+                }
+              />
+              <Route path="/apps" element={<AppsListPage isSidebarOpen={isSidebarOpen} onToggleSidebar={toggleSidebar} />} />
+              <Route path="/apps/:appId" element={<MiniAppShell isSidebarOpen={isSidebarOpen} onToggleSidebar={toggleSidebar} />}>
+                <Route path=":page" element={<AppPage />} />
+                <Route index element={<AppPage />} />
+              </Route>
+              <Route
+                path="/devtools"
+                element={
+                  <PageShell
+                    title="🛠️ DevTools"
+                    isSidebarOpen={isSidebarOpen}
+                    onToggleSidebar={toggleSidebar}
+                  >
+                    <DevToolsPage />
+                  </PageShell>
+                }
+              />
+              <Route
+                path="*"
+                element={
+                  <NotFoundPage
+                    isSidebarOpen={isSidebarOpen}
+                    onToggleSidebar={toggleSidebar}
+                  />
+                }
+              />
+            </Routes>
+          </main>
+        </div>
       </div>
-    </div>
+    </ToastProvider>
   );
 }
 
@@ -1039,7 +1081,7 @@ function InsightsPage({ isSidebarOpen, onToggleSidebar }: SidebarToggleProps) {
         <CardBody>
           <div className="note-grid">
             <Card shadow="sm">
-              <CardHeader>Onboarding</CardHeader>
+              <CardHeader>firstTImeSetup</CardHeader>
               <CardBody>
                 Activation rate rose after the new checklist went live.
               </CardBody>

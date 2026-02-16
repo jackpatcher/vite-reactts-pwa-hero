@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import {
   Button,
   Modal,
@@ -8,10 +8,10 @@ import {
   ModalHeader,
   Tooltip,
 } from "@heroui/react";
-import { ArrowDownToBracket, InfoCircle, Star as StarOutline, TrashBin } from "flowbite-react-icons/outline";
+import { ArrowDownToBracket, InfoCircle, Star as StarOutline, TrashBin, CheckCircle, CloseCircle } from "flowbite-react-icons/outline";
 import { Star as StarSolid } from "flowbite-react-icons/solid";
 import AppIcon from "./AppIcon";
-import { readTags, writeTags } from "../lib/appStorage";
+import { useToast } from "./ToastContext";
 
 type AppCardProps = {
   id: string;
@@ -41,36 +41,27 @@ export default function AppCard({
   pages = [],
 }: AppCardProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [tags, setTags] = useState<string[]>([]);
-  const [newTag, setNewTag] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { showToast } = useToast();
 
-  useEffect(() => {
-    const store = readTags();
-    setTags(store[id] ?? []);
-  }, [id]);
-
-  const normalizedTags = useMemo(
-    () => tags.map((tag) => tag.trim()).filter(Boolean),
-    [tags]
-  );
-
-  function persistTags(next: string[]) {
-    const store = readTags();
-    store[id] = next;
-    writeTags(store);
-    setTags(next);
+  function handleToggleFavorite() {
+    onToggleFavorite(id);
+    showToast({
+      message: isFavorite ? `Removed from favorites` : `Added to favorites`,
+      type: isFavorite ? "danger" : "success",
+      icon: isFavorite ? <CloseCircle className="text-red-500 mr-2" size={18} /> : <StarSolid className="text-yellow-400 mr-2" size={18} />,
+    });
   }
 
-  function addTag() {
-    const value = newTag.trim();
-    if (!value) return;
-    if (normalizedTags.includes(value)) return;
-    persistTags([...normalizedTags, value]);
-    setNewTag("");
-  }
-
-  function removeTag(tag: string) {
-    persistTags(normalizedTags.filter((t) => t !== tag));
+  async function handleToggleInstall() {
+    setLoading(true);
+    await onToggleInstall(id);
+    setLoading(false);
+    showToast({
+      message: isInstalled ? `Uninstalled ${name}` : `Installed ${name}`,
+      type: isInstalled ? "danger" : "success",
+      icon: isInstalled ? <CloseCircle className="text-red-500 mr-2" size={18} /> : <CheckCircle className="text-green-500 mr-2" size={18} />,
+    });
   }
 
   return (
@@ -98,7 +89,7 @@ export default function AppCard({
                 <Button
                   isIconOnly
                   variant="flat"
-                  onPress={onToggleFavorite.bind(null, id)}
+                  onPress={handleToggleFavorite}
                   onClick={(event) => event.stopPropagation()}
                   aria-label={`${isFavorite ? "Unfavorite" : "Favorite"} ${name}`}
                 >
@@ -134,8 +125,8 @@ export default function AppCard({
                 isIconOnly
                 variant={isInstalled ? "flat" : "solid"}
                 color={isInstalled ? "default" : "primary"}
-                onPress={onToggleInstall.bind(null, id)}
-                onClick={(event) => event.stopPropagation()}
+                onClick={async (event) => { event.stopPropagation(); await handleToggleInstall(); }}
+                disabled={loading}
                 aria-label={isInstalled ? `Uninstall ${name}` : `Install ${name}`}
               >
                 {isInstalled ? <TrashBin size={16} /> : <ArrowDownToBracket size={16} />}
@@ -166,39 +157,6 @@ export default function AppCard({
                   <li key={page.id}>{page.label}</li>
                 ))}
               </ul>
-            </div>
-            <div className="app-modal-section">
-              <div className="app-modal-label">Tags</div>
-              <div className="app-tags">
-                {normalizedTags.length === 0 ? (
-                  <span className="app-tags-empty">No tags yet</span>
-                ) : (
-                  normalizedTags.map((tag) => (
-                    <button key={tag} type="button" className="app-tag" onClick={() => removeTag(tag)}>
-                      {tag}
-                      <span className="app-tag-remove">×</span>
-                    </button>
-                  ))
-                )}
-              </div>
-              <div className="app-tags-input">
-                <input
-                  className="app-tags-field"
-                  type="text"
-                  placeholder="Add tag"
-                  value={newTag}
-                  onChange={(event) => setNewTag(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      addTag();
-                    }
-                  }}
-                />
-                <Button size="sm" variant="flat" onPress={addTag}>
-                  Add
-                </Button>
-              </div>
             </div>
           </ModalBody>
           <ModalFooter>

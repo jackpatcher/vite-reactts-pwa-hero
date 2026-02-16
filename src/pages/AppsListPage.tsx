@@ -1,67 +1,43 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { apps as appsData, type AppDef } from "../data/apps";
 import AppCard from "../components/AppCard";
 import PageShell from "../components/PageShell";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@heroui/react";
-import {
-  readFavorites,
-  readInstalled,
-  writeFavorites,
-  writeInstalled,
-} from "../lib/appStorage";
+import { writeFavorites } from "../lib/appStorage";
+import { db, setInstalled, getAppState } from "../modules/storage/indexedDb";
+import { useLiveQuery } from "dexie-react-hooks";
 
 export default function AppsListPage({ isSidebarOpen, onToggleSidebar }: { isSidebarOpen: boolean; onToggleSidebar: () => void }) {
-  const [favorites, setFavorites] = useState<string[]>(readFavorites());
-  const [installed, setInstalled] = useState<string[]>(readInstalled());
+  // ใช้ useLiveQuery - อัพเดทอัตโนมัติเมื่อข้อมูลใน DB เปลี่ยน
+  // รองรับทั้ง boolean และ 0/1 (number)
+  const allAppStates = useLiveQuery(() => db.appState.toArray(), [] )?.map(s => ({
+    ...s,
+    isInstalled: s.isInstalled === true || s.isInstalled === 1,
+    isFavorite: s.isFavorite === true || s.isFavorite === 1,
+  })) ?? [];
+  const installed = allAppStates.filter(s => s.isInstalled).map(s => s.appId);
+  const favorites = allAppStates.filter(s => s.isFavorite).map(s => s.appId);
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
 
-  function toggleFavorite(id: string) {
+  async function toggleFavorite(id: string) {
     if (!installed.includes(id)) return;
-    setFavorites((prev) => {
-      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [id, ...prev];
-      writeFavorites(next);
-      const dispatch = () =>
-        window.dispatchEvent(new CustomEvent("favorites:updated", { detail: { favorites: next } }));
-      if (typeof queueMicrotask === "function") {
-        queueMicrotask(dispatch);
-      } else {
-        setTimeout(dispatch, 0);
-      }
-      return next;
-    });
+    const next = favorites.includes(id)
+      ? favorites.filter((x) => x !== id)
+      : [id, ...favorites];
+    await writeFavorites(next);
+    // UI จะอัพเดทอัตโนมัติผ่าน useLiveQuery
   }
 
-  function toggleInstall(id: string) {
-    setInstalled((prev) => {
-      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [id, ...prev];
-      writeInstalled(next);
-      const dispatch = () =>
-        window.dispatchEvent(new CustomEvent("installed:updated", { detail: { installed: next } }));
-      if (typeof queueMicrotask === "function") {
-        queueMicrotask(dispatch);
-      } else {
-        setTimeout(dispatch, 0);
-      }
-      if (!next.includes(id)) {
-        setFavorites((prevFavorites) => {
-          const nextFavorites = prevFavorites.filter((x) => x !== id);
-          if (nextFavorites.length !== prevFavorites.length) {
-            writeFavorites(nextFavorites);
-            const dispatch = () =>
-              window.dispatchEvent(new CustomEvent("favorites:updated", { detail: { favorites: nextFavorites } }));
-            if (typeof queueMicrotask === "function") {
-              queueMicrotask(dispatch);
-            } else {
-              setTimeout(dispatch, 0);
-            }
-          }
-          return nextFavorites;
-        });
-      }
-      return next;
-    });
+  async function toggleInstall(id: string) {
+    const isCurrentlyInstalled = installed.includes(id);
+    await setInstalled(id, !isCurrentlyInstalled);
+    // ตรวจสอบค่าจริงใน db หลัง uninstall/install
+    const state = await getAppState(id);
+    // eslint-disable-next-line no-console
+    console.log('DEBUG: AppState after setInstalled', id, state);
+    // UI จะอัพเดทอัตโนมัติผ่าน useLiveQuery
   }
 
   const filteredApps = useMemo(() => {
@@ -75,7 +51,28 @@ export default function AppsListPage({ isSidebarOpen, onToggleSidebar }: { isSid
     });
   }, [search]);
 
-  const installedApps = filteredApps.filter((app) => installed.includes(app.id));
+  // Find all installed app states (even if not in appsData)
+  const installedAppStates = allAppStates.filter((s) => s.isInstalled);
+
+  // Merge: for each installed app, use data from appsData if exists, else fallback to appState
+  const installedApps = installedAppStates.map((state) => {
+    const app = appsData.find((a) => a.id === state.appId);
+    return app
+      ? { ...app, isFavorite: state.isFavorite, isInstalled: true }
+      : {
+          id: state.appId,
+          name: state.appId,
+          description: "",
+          details: "",
+          color: undefined,
+          logo: undefined,
+          pages: [],
+          isFavorite: state.isFavorite,
+          isInstalled: true,
+        };
+  });
+
+  // Available = apps in appsData that are not installed
   const availableApps = filteredApps.filter((app) => !installed.includes(app.id));
 
   return (
@@ -98,7 +95,7 @@ export default function AppsListPage({ isSidebarOpen, onToggleSidebar }: { isSid
           {installedApps.length === 0 ? (
             <div className="apps-empty">No installed apps.</div>
           ) : (
-            installedApps.map((app: AppDef) => (
+            installedApps.map((app: any) => (
               <AppCard
                 key={app.id}
                 id={app.id}
@@ -110,7 +107,7 @@ export default function AppsListPage({ isSidebarOpen, onToggleSidebar }: { isSid
                 isInstalled={true}
                 onToggleFavorite={toggleFavorite}
                 onToggleInstall={toggleInstall}
-                onOpen={() => navigate(`/apps/${app.id}/${app.pages[0].path}`)}
+                onOpen={app.pages && app.pages.length > 0 ? () => navigate(`/apps/${app.id}/${app.pages[0].path}`) : undefined}
                 pages={app.pages}
               />
             ))

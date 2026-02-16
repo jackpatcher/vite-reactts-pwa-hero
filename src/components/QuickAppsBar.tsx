@@ -4,62 +4,17 @@ import { Button } from "@heroui/react";
 import { Grid } from "flowbite-react-icons/outline";
 import { apps as appsData } from "../data/apps";
 import AppIcon from "./AppIcon";
-import {
-  readFavorites,
-  readInstalled,
-  readLauncherSelection,
-  writeFavorites,
-  writeLauncherSelection,
-} from "../lib/appStorage";
+import { writeLauncherSelection } from "../lib/appStorage";
+import { useFavoriteApps, useInstalledApps, useLauncherSelection } from "../modules/storage";
 
 export default function QuickAppsBar() {
-  const [favorites, setFavorites] = useState<string[]>([]);
+  // ใช้ useLiveQuery แทน useState - จะอัพเดทอัตโนมัติเมื่อข้อมูลเปลี่ยน
+  const favorites = useFavoriteApps() ?? [];
+  const installed = useInstalledApps() ?? [];
+  const selectedId = useLauncherSelection();
+
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [installed, setInstalled] = useState<string[]>([]);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    setFavorites(readFavorites());
-    setSelectedId(readLauncherSelection());
-    setInstalled(readInstalled());
-  }, []);
-
-  useEffect(() => {
-    function handleFavoritesUpdated(event: Event) {
-      const detail = (event as CustomEvent<{ favorites?: string[] }>).detail;
-      if (detail?.favorites) {
-        setFavorites(detail.favorites);
-      } else {
-        setFavorites(readFavorites());
-      }
-    }
-
-    window.addEventListener("favorites:updated", handleFavoritesUpdated);
-    window.addEventListener("storage", handleFavoritesUpdated);
-    return () => {
-      window.removeEventListener("favorites:updated", handleFavoritesUpdated);
-      window.removeEventListener("storage", handleFavoritesUpdated);
-    };
-  }, []);
-
-  useEffect(() => {
-    function handleInstalledUpdated(event: Event) {
-      const detail = (event as CustomEvent<{ installed?: string[] }>).detail;
-      if (detail?.installed) {
-        setInstalled(detail.installed);
-      } else {
-        setInstalled(readInstalled());
-      }
-    }
-
-    window.addEventListener("installed:updated", handleInstalledUpdated);
-    window.addEventListener("storage", handleInstalledUpdated);
-    return () => {
-      window.removeEventListener("installed:updated", handleInstalledUpdated);
-      window.removeEventListener("storage", handleInstalledUpdated);
-    };
-  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -90,30 +45,6 @@ export default function QuickAppsBar() {
     [favorites, installed]
   );
 
-  useEffect(() => {
-    const filtered = favorites.filter((id) => installed.includes(id));
-    if (filtered.length !== favorites.length) {
-      writeFavorites(filtered);
-      setFavorites(filtered);
-      const dispatch = () =>
-        window.dispatchEvent(new CustomEvent("favorites:updated", { detail: { favorites: filtered } }));
-      if (typeof queueMicrotask === "function") {
-        queueMicrotask(dispatch);
-      } else {
-        setTimeout(dispatch, 0);
-      }
-    }
-  }, [favorites, installed]);
-
-  useEffect(() => {
-    if (!selectedId) return;
-    const exists = favoriteApps.some((app) => app?.id === selectedId);
-    if (!exists) {
-      setSelectedId(null);
-      writeLauncherSelection(null);
-    }
-  }, [favoriteApps, selectedId]);
-
   if (favoriteApps.length === 0) return null;
 
   return (
@@ -142,8 +73,8 @@ export default function QuickAppsBar() {
                 role="menuitem"
                 onClick={() => {
                   setIsOpen(false);
-                  setSelectedId(app!.id);
-                  writeLauncherSelection(app!.id);
+                  void writeLauncherSelection(app!.id);
+                  // selectedId จะอัพเดทอัตโนมัติผ่าน useLiveQuery
                 }}
               >
                 <span className="quick-apps-item-avatar app-icon" aria-hidden="true">
