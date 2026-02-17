@@ -1,32 +1,28 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Button, Card, CardBody, Chip, Progress } from "@heroui/react";
+import { useState } from "react";
+import { Button, Card, CardBody, Chip, Progress, Form, Input } from "@heroui/react";
 import { useNavigate } from "react-router-dom";
 import { completeFirstTimeSetup } from "../../lib/appStorage";
 
 const steps = [
   {
-    title: "Welcome to Ambridge",
-    description:
-      "We will walk you through the core actions and help you set up your workspace.",
-    badge: "Start",
+    title: "ข้อตกลงการใช้งาน",
+    description: "โปรดอ่านข้อตกลงการใช้งานและกฎหมายให้ครบถ้วนก่อนใช้งานระบบนี้",
+    badge: "step 1",
   },
   {
-    title: "Connect your tools",
-    description:
-      "Add your first apps, enable integrations, and pin the tools you use every day.",
-    badge: "Step 1",
+    title: "ข้อมูลโรงเรียน",
+    description: "กรุณากรอก SchoolID และ SchoolPass (เลข 6 หลัก)",
+    badge: "step 2",
   },
   {
-    title: "Invite your team",
-    description:
-      "Create roles and invite teammates so everyone can collaborate in one place.",
-    badge: "Step 2",
+    title: "ข้อมูลผู้ใช้",
+    description: "กรุณากรอก Username และ Password เพื่อยืนยันตัวตน",
+    badge: "step 3",
   },
   {
-    title: "Finish setup",
-    description:
-      "Review your preferences and confirm your registration details to go live.",
-    badge: "Step 3",
+    title: "ยินดีต้อนรับ",
+    description: "ตั้งค่าเสร็จสมบูรณ์ พร้อมใช้งานระบบ Ambridge",
+    badge: "step 4",
   },
 ];
 
@@ -34,44 +30,60 @@ const steps = [
 
 export default function FirstimeSetupFlow() {
   const navigate = useNavigate();
-  const [activeIndex, setActiveIndex] = useState(0);
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-  const isScrollingRef = useRef(false);
+  const [activeStep, setActiveStep] = useState(0);
+  const [schoolID, setSchoolID] = useState("");
+  const [schoolPass, setSchoolPass] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [accepted, setAccepted] = useState(false);
+  const [error, setError] = useState("");
 
   const totalSteps = steps.length;
-  const isLast = activeIndex === totalSteps - 1;
-  const percent = useMemo(
-    () => Math.round(((activeIndex + 1) / totalSteps) * 100),
-    [activeIndex, totalSteps]
-  );
+  const isLast = activeStep === totalSteps - 1;
+  const percent = Math.round(((activeStep + 1) / totalSteps) * 100);
 
-  useEffect(() => {
-    const container = scrollRef.current;
-    if (!container) return;
-    isScrollingRef.current = true;
-    const width = container.clientWidth || 1;
-    container.scrollTo({ left: width * activeIndex, behavior: "smooth" });
-    const timer = setTimeout(() => {
-      isScrollingRef.current = false;
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [activeIndex]);
-
-  const handleScroll = () => {
-    if (isScrollingRef.current) return;
-    const container = scrollRef.current;
-    if (!container) return;
-    const width = container.clientWidth || 1;
-    const nextIndex = Math.round(container.scrollLeft / width);
-    if (nextIndex !== activeIndex) {
-      setActiveIndex(nextIndex);
+  const handleNext = async () => {
+    setError("");
+    if (activeStep === 0 && !accepted) {
+      setError("กรุณายอมรับข้อตกลงก่อน");
+      return;
+    }
+    if (activeStep === 1) {
+      if (!schoolID) {
+        setError("กรุณากรอก SchoolID");
+        return;
+      }
+      if (!/^[0-9]+$/.test(schoolID)) {
+        setError("SchoolID ต้องเป็นตัวเลขเท่านั้น");
+        return;
+      }
+      if (!schoolPass) {
+        setError("กรุณากรอก SchoolPass");
+        return;
+      }
+      if (!/^[0-9]+$/.test(schoolPass)) {
+        setError("SchoolPass ต้องเป็นตัวเลขเท่านั้น");
+        return;
+      }
+    }
+    if (activeStep === 2) {
+      if (!username || !password) {
+        setError("กรุณากรอก Username และ Password");
+        return;
+      }
+    }
+    setActiveStep((prev) => prev + 1);
+    if (activeStep === 2) {
+      await completeFirstTimeSetup();
+    }
+    if (activeStep === 3) {
+      navigate("/dashboard/overview", { replace: true });
     }
   };
 
-  const handleFinish = async () => {
-    await completeFirstTimeSetup();
-    console.log("Finish setup clicked");
-    navigate("/dashboard/overview", { replace: true });
+  const handleBack = () => {
+    setError("");
+    setActiveStep((prev) => Math.max(0, prev - 1));
   };
 
   return (
@@ -98,51 +110,121 @@ export default function FirstimeSetupFlow() {
           />
           <div className="firstTImeSetup-progress-meta">
             <span>
-              Step {activeIndex + 1} of {totalSteps}
+              Step {activeStep + 1} of {totalSteps}
             </span>
             <span>{percent}%</span>
           </div>
         </div>
-        <div className="firstTImeSetup-carousel" ref={scrollRef} onScroll={handleScroll}>
-          {steps.map((step) => (
-            <div className="firstTImeSetup-slide" key={step.title}>
-              <Card className="firstTImeSetup-card" shadow="sm" isBlurred>
-                <CardBody>
-                  <Chip color="primary" variant="flat" size="sm">
-                    {step.badge}
-                  </Chip>
-                  <h2>{step.title}</h2>
-                  <p>{step.description}</p>
-                </CardBody>
-              </Card>
-            </div>
-          ))}
-        </div>
-        <div className="firstTImeSetup-dots" role="tablist" aria-label="firstTImeSetup steps">
-          {steps.map((step, index) => (
-            <button
-              key={step.title}
-              type="button"
-              className={`firstTImeSetup-dot${index === activeIndex ? " is-active" : ""}`}
-              onClick={() => setActiveIndex(index)}
-              aria-label={`Go to step ${index + 1}`}
-              aria-current={index === activeIndex ? "step" : undefined}
-            />
-          ))}
+        <div>
+          {activeStep === 0 && (
+            <Card className="firstTImeSetup-card" shadow="sm" isBlurred>
+              <CardBody>
+                <h2>ข้อตกลงการใช้งาน</h2>
+                <p>โปรดอ่านข้อตกลงการใช้งานและกฎหมายให้ครบถ้วนก่อนใช้งานระบบนี้</p>
+                <div className="mt-4">
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={accepted} onChange={e => setAccepted(e.target.checked)} />
+                    <span>ฉันยอมรับข้อตกลง</span>
+                  </label>
+                </div>
+              </CardBody>
+            </Card>
+          )}
+          {activeStep === 1 && (
+            <Card className="firstTImeSetup-card" shadow="sm" isBlurred>
+              <CardBody>
+                <h2>ข้อมูลโรงเรียน</h2>
+                <p>กรุณากรอก SchoolID และ SchoolPass</p>
+                <Form
+                  className="w-full max-w-md mt-4 flex flex-col gap-4"
+                  validationBehavior="aria"
+                  onSubmit={e => {
+                    e.preventDefault();
+                    handleNext();
+                  }}
+                >
+                  <Input
+                    isRequired
+                    label="SchoolID"
+                    labelPlacement="outside"
+                    name="schoolID"
+                    placeholder="กรอกเลขรหัสโรงเรียน (ตัวเลขเท่านั้น)"
+                    type="text"
+                    value={schoolID}
+                    onValueChange={setSchoolID}
+                    validate={value => {
+                      if (!value) return "กรุณากรอก SchoolID";
+                      if (!/^[0-9]+$/.test(value)) return "SchoolID ต้องเป็นตัวเลขเท่านั้น";
+                      return null;
+                    }}
+                  />
+                  <Input
+                    isRequired
+                    label="SchoolPass"
+                    labelPlacement="outside"
+                    name="schoolPass"
+                    placeholder="กรอกรหัสผ่านโรงเรียน (ตัวเลขเท่านั้น)"
+                    type="text"
+                    value={schoolPass}
+                    onValueChange={setSchoolPass}
+                    validate={value => {
+                      if (!value) return "กรุณากรอก SchoolPass";
+                      if (!/^[0-9]+$/.test(value)) return "SchoolPass ต้องเป็นตัวเลขเท่านั้น";
+                      return null;
+                    }}
+                  />
+                  
+                </Form>
+              </CardBody>
+            </Card>
+          )}
+          {activeStep === 2 && (
+            <Card className="firstTImeSetup-card" shadow="sm" isBlurred>
+              <CardBody>
+                <h2>ข้อมูลผู้ใช้</h2>
+                <p>กรุณากรอก Username และ Password เพื่อยืนยันตัวตน</p>
+                <div className="mt-4 flex flex-col gap-2">
+                  <input type="text" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} className="input" />
+                  <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} className="input" />
+                </div>
+              </CardBody>
+            </Card>
+          )}
+          {activeStep === 3 && (
+            <Card className="firstTImeSetup-card" shadow="sm" isBlurred>
+              <CardBody>
+                <h2>ยินดีต้อนรับ</h2>
+                <p>ตั้งค่าเสร็จสมบูรณ์ พร้อมใช้งานระบบ Ambridge</p>
+              </CardBody>
+            </Card>
+          )}
+          {error && <div className="text-red-500 mt-2 text-sm font-semibold">{error}</div>}
         </div>
         <div className="firstTImeSetup-actions">
-          <Button
-            variant="light"
-            onPress={() => setActiveIndex((index) => Math.max(0, index - 1))}
-            isDisabled={activeIndex === 0}
-          >
-            Back
-          </Button>
-          <Button color="primary" onPress={() => (isLast ? handleFinish() : setActiveIndex((prev) => prev + 1))}>
-            {isLast ? "Finish setup" : "Next"}
-          </Button>
+          <>
+            <Button
+              variant="light"
+              onPress={handleBack}
+              isDisabled={activeStep === 0}
+            >
+              Back
+            </Button>
+            <Button
+              style={{
+                background: isLast ? "var(--theme-primary, #2563eb)" : undefined,
+                color: isLast ? "#fff" : undefined,
+                fontWeight: 700,
+                fontSize: 16,
+                boxShadow: isLast ? "0 2px 8px rgba(0,0,0,0.10)" : undefined,
+              }}
+              color={isLast ? undefined : "primary"}
+              onPress={handleNext}
+            >
+              {isLast ? "Finish setup" : "Next"}
+            </Button>
+          </>
         </div>
-        <div className="firstTImeSetup-hint">Swipe to continue or use the buttons.</div>
+        <div className="firstTImeSetup-hint">กรุณากรอกข้อมูลให้ครบถ้วนและถูกต้อง</div>
       </div>
     </div>
   );

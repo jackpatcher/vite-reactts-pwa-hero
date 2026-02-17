@@ -25,14 +25,12 @@ export type FirstTimeSetupStorage = {
   SchoolPass: string;
   Username: string;
   Password: string;
-  completed?: boolean;
-  completedAt?: string;
-  isFirsttimeSetupDone?: boolean;
+  isFirstTimeSetupDone?: boolean;
 };
 
 type AppStorageState = {
   theme?: ThemeStorage;
-    isFirsttimeSetupDone?: boolean; // Added new property
+    isFirstTimeSetupDone?: boolean; // Added new property
   favorites?: string[];
   installed?: string[];
   launcher?: LauncherStorage;
@@ -266,7 +264,7 @@ export async function writeFirstTimeSetup(next: FirstTimeSetupStorage) {
 export async function isFirstTimeSetupNeeded(): Promise<boolean> {
   await migrateLegacyIfNeeded();
   const setup = await getConfig<FirstTimeSetupStorage>(FIRST_TIME_SETUP_KEY);
-  return !setup?.isFirsttimeSetupDone;
+  return !setup?.isFirstTimeSetupDone;
 }
 
 export async function completeFirstTimeSetup(): Promise<void> {
@@ -275,9 +273,7 @@ export async function completeFirstTimeSetup(): Promise<void> {
     SchoolPass: "",
     Username: "",
     Password: "",
-    isFirsttimeSetupDone: true,
-    completed: true,
-    completedAt: new Date().toISOString(),
+    isFirstTimeSetupDone: true,
   });
   await removeConfig("onboarding");
 }

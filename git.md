@@ -8,5 +8,5 @@ git push -u origin main
 
 
 git add .
-git commit -m "indexDB FirstTimeSetup"
+git commit -m "step firsttimesetup"
 git push -u origin main 

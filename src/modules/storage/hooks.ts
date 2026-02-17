@@ -49,6 +49,6 @@ export function useFirstTimeSetup() {
 export function useIsFirstTime() {
   return useLiveQuery(async () => {
     const setup = await getConfig<FirstTimeSetupStorage>("firstTimeSetup");
-    return !setup?.isFirsttimeSetupDone;
+    return !setup?.isFirstTimeSetupDone;
   }, [], true);
 }

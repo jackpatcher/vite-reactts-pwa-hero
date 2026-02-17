@@ -45,7 +45,6 @@ import {
   Route,
   Routes,
   useLocation,
-  useNavigate,
 } from "react-router-dom";
 import ThemeSettingsPage from "./pages/ThemeSettingsPage";
 import QuickAppsBar from "./components/QuickAppsBar";
@@ -54,7 +53,7 @@ import MiniAppShell from "./pages/apps/AppShell";
 import AppPage from "./pages/apps/AppPage";
 import DevToolsPage from "./pages/DevToolsPage";
 import { apps } from "./data/apps";
-import { completeFirstTimeSetup, writeTheme } from "./lib/appStorage";
+import { writeTheme, readFirstTimeSetup, writeFirstTimeSetup } from "./lib/appStorage";
 import { FirstimeSetupFlow } from "./modules/firsttimeSetup";
 import {
   useInstalledApps,
@@ -375,6 +374,33 @@ function useTheme(): ThemeController {
 }
 
 function AppShell() {
+    // Hotkey: Ctrl+Shift+E => toggle isFirstTimeSetupDone
+    useEffect(() => {
+      const handler = async (e: KeyboardEvent) => {
+        if (e.ctrlKey && e.shiftKey && (e.key === "E" || e.key === "e")) {
+          e.preventDefault();
+          const setup = await readFirstTimeSetup();
+          let newValue = true;
+          if (setup && typeof setup.isFirstTimeSetupDone === "boolean") {
+            newValue = !setup.isFirstTimeSetupDone;
+          }
+          if (setup) {
+            await writeFirstTimeSetup({ ...setup, isFirstTimeSetupDone: newValue });
+          } else {
+            await writeFirstTimeSetup({
+              SchoolID: "",
+              SchoolPass: "",
+              Username: "",
+              Password: "",
+              isFirstTimeSetupDone: newValue,
+            });
+          }
+          setToast(`isFirstTimeSetupDone ถูกตั้งเป็น ${newValue ? "true" : "false"}`);
+        }
+      };
+      window.addEventListener("keydown", handler);
+      return () => window.removeEventListener("keydown", handler);
+    }, []);
   const { mode, setMode, paletteId, setPaletteId, fontId, setFontId } = useTheme();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
@@ -385,7 +411,6 @@ function AppShell() {
 
   const isFirstRender = useRef(true);
   const location = useLocation();
-  const navigate = useNavigate();
   const menuItems = useMemo(() => {
     const installed = apps.filter((app) => installedApps.includes(app.id));
     return [
@@ -413,11 +438,6 @@ function AppShell() {
     return match ? [match.id] : [];
   }, [location.pathname, menuItems]);
   const toggleSidebar = () => setIsSidebarOpen((current) => !current);
-
-  const handlefirstTImeSetupComplete = () => {
-    void completeFirstTimeSetup();
-    // isFirstTime จะอัพเดทอัตโนมัติผ่าน useLiveQuery
-  };
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -479,7 +499,7 @@ function AppShell() {
         <header className="appbar">
           <div className="appbar-inner">
             <div className="appbar-brand">
-              <div className="brand-mark">HQ</div>
+              <div className="brand-mark">AP</div>
               <div className="brand-text">
                 <div className="brand-title">Ambridge</div>
                 <div className="brand-subtitle">PLATFORM</div>

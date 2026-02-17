@@ -52,6 +52,7 @@
   opacity: 0.4;
   pointer-events: none;
   z-index: 0;
+  display: none;
 }
 
 .app::before {
