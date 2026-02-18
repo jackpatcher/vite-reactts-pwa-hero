@@ -13,7 +13,7 @@ const steps = [
   },
   {
     title: "ข้อมูลโรงเรียน",
-    description: "กรุณากรอก SchoolID และ SchoolPass (เลข 6 หลัก)",
+    description: "กรุณากรอก SchoolID และ SchoolPass (รหัส 6 ตัว, ตัวอักษรหรือตัวเลข)",
     badge: "step 2",
   },
   {
@@ -60,11 +60,11 @@ export default function FirstimeSetupFlow() {
         return;
       }
       if (schoolPass.some(d => d === "")) {
-        setError("กรุณากรอก SchoolPass ให้ครบ 6 หลัก");
+        setError("กรุณากรอก SchoolPass ให้ครบ 6 ตัวอักษร/ตัวเลข");
         return;
       }
-      if (!schoolPass.every(d => /^[0-9]$/.test(d))) {
-        setError("SchoolPass ต้องเป็นตัวเลข 6 หลัก");
+      if (!schoolPass.every(d => /^[A-Za-z0-9]$/.test(d))) {
+        setError("SchoolPass ต้องเป็นตัวอักษรหรือตัวเลข 6 ตัว");
         return;
       }
     }
@@ -74,11 +74,20 @@ export default function FirstimeSetupFlow() {
         return;
       }
     }
-    setActiveStep((prev) => prev + 1);
+    // If we're on the user info step (index 2), persist the collected data
     if (activeStep === 2) {
-      await completeFirstTimeSetup();
+      await completeFirstTimeSetup({
+        SchoolID: schoolID,
+        SchoolPass: schoolPass.join("").toUpperCase(),
+        Username: username,
+        Password: password,
+        isFirstTimeSetupDone: true,
+      });
     }
-    if (activeStep === 3) {
+
+    const newActive = activeStep + 1;
+    setActiveStep(newActive);
+    if (newActive === 3) {
       navigate("/dashboard/overview", { replace: true });
     }
   };
@@ -154,12 +163,16 @@ export default function FirstimeSetupFlow() {
                     required
                   />
                   <div className="flex flex-col gap-2">
-                    <label className="font-medium text-sm mb-1">SchoolPass (รหัส 6 หลัก)</label>
+                    <label className="font-medium text-sm mb-1">SchoolPass (รหัส 6 ตัว, ตัวอักษรหรือตัวเลข)</label>
                     <div id="otp-input" className="flex justify-center">
                       <OtpInput
                         length={6}
                         value={schoolPass.join("")}
-                        onChange={val => setSchoolPass(val.split("").slice(0,6))}
+                        onChange={val => {
+                          const arr = val.replace(/[^A-Za-z0-9]/g, "").slice(0,6).split("");
+                          while (arr.length < 6) arr.push("");
+                          setSchoolPass(arr);
+                        }}
                       />
                     </div>
                   </div>
@@ -173,8 +186,22 @@ export default function FirstimeSetupFlow() {
                 <h2>ข้อมูลผู้ใช้</h2>
                 <p>กรุณากรอก Username และ Password เพื่อยืนยันตัวตน</p>
                 <div className="mt-4 flex flex-col gap-2">
-                  <input type="text" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} className="input" />
-                  <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} className="input" />
+                  <FloatLabelInput
+                    name="username"
+                    label="Username"
+                    type="text"
+                    value={username}
+                    onChange={val => setUsername(val)}
+                    required
+                  />
+                  <FloatLabelInput
+                    name="password"
+                    label="Password"
+                    type="password"
+                    value={password}
+                    onChange={val => setPassword(val)}
+                    required
+                  />
                 </div>
               </CardBody>
             </Card>

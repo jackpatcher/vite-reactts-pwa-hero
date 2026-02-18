@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 type Props = {
   id?: string;
@@ -14,6 +14,7 @@ type Props = {
 
 export default function FloatLabelInput({ id, name, label, value, onChange, type = "text", required = false, className = "" }: Props) {
   const inputId = id || name || `float-input-${Math.random().toString(36).slice(2, 9)}`;
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const [focused, setFocused] = useState(false);
   const active = focused || !!value;
 
@@ -37,7 +38,27 @@ export default function FloatLabelInput({ id, name, label, value, onChange, type
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         className={inputClass}
+        ref={inputRef}
       />
+      {/* clear button: clears only this input's value and focuses it */}
+      {value && (
+        <button
+          type="button"
+          aria-label={`Clear ${label}`}
+          tabIndex={-1}
+          onClick={() => {
+            onChange("");
+            setFocused(false);
+            inputRef.current?.blur();
+          }}
+          className="absolute right-3 top-3 w-6 h-6 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      )}
       <label htmlFor={inputId} className={labelClass}>{label}</label>
     </div>
   );

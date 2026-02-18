@@ -39,7 +39,7 @@ import {
   Wrench,
 } from "lucide-react";
 import {
-  BrowserRouter,
+  HashRouter as BrowserRouter,
   Link,
   Navigate,
   Route,

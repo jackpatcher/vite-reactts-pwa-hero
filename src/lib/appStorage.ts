@@ -9,6 +9,7 @@ import {
   bulkSetAppStates,
   deleteAppState,
 } from "../modules/storage/indexedDb";
+import { hashValue, isProbablyHashed } from "./secure.js";
 
 export type ThemeStorage = {
   mode?: string;
@@ -258,7 +259,18 @@ export async function readFirstTimeSetup(): Promise<FirstTimeSetupStorage | null
 }
 
 export async function writeFirstTimeSetup(next: FirstTimeSetupStorage) {
-  await setConfig(FIRST_TIME_SETUP_KEY, next);
+  // Ensure passwords are stored as irreversible hashes.
+  const schoolPass = next.SchoolPass ?? "";
+  const password = next.Password ?? "";
+
+  const hashedSchoolPass = schoolPass && !isProbablyHashed(schoolPass) ? await hashValue(schoolPass, 100000, 8) : schoolPass;
+  const hashedPassword = password && !isProbablyHashed(password) ? await hashValue(password, 100000, 8) : password;
+
+  await setConfig(FIRST_TIME_SETUP_KEY, {
+    ...next,
+    SchoolPass: hashedSchoolPass,
+    Password: hashedPassword,
+  });
 }
 
 export async function isFirstTimeSetupNeeded(): Promise<boolean> {
@@ -267,13 +279,20 @@ export async function isFirstTimeSetupNeeded(): Promise<boolean> {
   return !setup?.isFirstTimeSetupDone;
 }
 
-export async function completeFirstTimeSetup(): Promise<void> {
-  await setConfig<FirstTimeSetupStorage>(FIRST_TIME_SETUP_KEY, {
-    SchoolID: "",
-    SchoolPass: "",
-    Username: "",
-    Password: "",
+export async function completeFirstTimeSetup(next?: FirstTimeSetupStorage): Promise<void> {
+  const rawSchoolPass = next?.SchoolPass ?? "";
+  const rawPassword = next?.Password ?? "";
+
+  const SchoolPass = rawSchoolPass && !isProbablyHashed(rawSchoolPass) ? await hashValue(rawSchoolPass, 100000, 8) : rawSchoolPass;
+  const Password = rawPassword && !isProbablyHashed(rawPassword) ? await hashValue(rawPassword, 100000, 8) : rawPassword;
+
+  const payload: FirstTimeSetupStorage = {
+    SchoolID: next?.SchoolID ?? "",
+    SchoolPass,
+    Username: next?.Username ?? "",
+    Password,
     isFirstTimeSetupDone: true,
-  });
+  };
+  await setConfig<FirstTimeSetupStorage>(FIRST_TIME_SETUP_KEY, payload);
   await removeConfig("onboarding");
 }
