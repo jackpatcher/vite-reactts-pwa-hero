@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Button, Card, CardBody, Chip, Progress, Form, Input } from "@heroui/react";
+import { Button, Card, CardBody, Chip, Progress, Form } from "@heroui/react";
+import FloatLabelInput from "../../components/FloatLabelInput";
+import OtpInput from "../../components/OtpInput";
 import { useNavigate } from "react-router-dom";
 import { completeFirstTimeSetup } from "../../lib/appStorage";
 
@@ -32,7 +34,7 @@ export default function FirstimeSetupFlow() {
   const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(0);
   const [schoolID, setSchoolID] = useState("");
-  const [schoolPass, setSchoolPass] = useState("");
+  const [schoolPass, setSchoolPass] = useState<string[]>(Array(6).fill(""));
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [accepted, setAccepted] = useState(false);
@@ -57,12 +59,12 @@ export default function FirstimeSetupFlow() {
         setError("SchoolID ต้องเป็นตัวเลขเท่านั้น");
         return;
       }
-      if (!schoolPass) {
-        setError("กรุณากรอก SchoolPass");
+      if (schoolPass.some(d => d === "")) {
+        setError("กรุณากรอก SchoolPass ให้ครบ 6 หลัก");
         return;
       }
-      if (!/^[0-9]+$/.test(schoolPass)) {
-        setError("SchoolPass ต้องเป็นตัวเลขเท่านั้น");
+      if (!schoolPass.every(d => /^[0-9]$/.test(d))) {
+        setError("SchoolPass ต้องเป็นตัวเลข 6 หลัก");
         return;
       }
     }
@@ -143,37 +145,24 @@ export default function FirstimeSetupFlow() {
                     handleNext();
                   }}
                 >
-                  <Input
-                    isRequired
-                    label="SchoolID"
-                    labelPlacement="outside"
+                  <FloatLabelInput
                     name="schoolID"
-                    placeholder="กรอกเลขรหัสโรงเรียน (ตัวเลขเท่านั้น)"
+                    label="SchoolID"
                     type="text"
                     value={schoolID}
-                    onValueChange={setSchoolID}
-                    validate={value => {
-                      if (!value) return "กรุณากรอก SchoolID";
-                      if (!/^[0-9]+$/.test(value)) return "SchoolID ต้องเป็นตัวเลขเท่านั้น";
-                      return null;
-                    }}
+                    onChange={val => setSchoolID(val)}
+                    required
                   />
-                  <Input
-                    isRequired
-                    label="SchoolPass"
-                    labelPlacement="outside"
-                    name="schoolPass"
-                    placeholder="กรอกรหัสผ่านโรงเรียน (ตัวเลขเท่านั้น)"
-                    type="text"
-                    value={schoolPass}
-                    onValueChange={setSchoolPass}
-                    validate={value => {
-                      if (!value) return "กรุณากรอก SchoolPass";
-                      if (!/^[0-9]+$/.test(value)) return "SchoolPass ต้องเป็นตัวเลขเท่านั้น";
-                      return null;
-                    }}
-                  />
-                  
+                  <div className="flex flex-col gap-2">
+                    <label className="font-medium text-sm mb-1">SchoolPass (รหัส 6 หลัก)</label>
+                    <div id="otp-input" className="flex justify-center">
+                      <OtpInput
+                        length={6}
+                        value={schoolPass.join("")}
+                        onChange={val => setSchoolPass(val.split("").slice(0,6))}
+                      />
+                    </div>
+                  </div>
                 </Form>
               </CardBody>
             </Card>

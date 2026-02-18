@@ -8,5 +8,5 @@ git push -u origin main
 
 
 git add .
-git commit -m "step firsttimesetup"
+git commit -m "step OTP floatLabel component"
 git push -u origin main 
