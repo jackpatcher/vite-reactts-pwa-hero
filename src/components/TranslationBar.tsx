@@ -1,4 +1,3 @@
-import React from "react";
 import { Input } from "@heroui/react";
 import { Search } from "lucide-react";
 import { useTranslationBar } from "../contexts/TranslationContext";

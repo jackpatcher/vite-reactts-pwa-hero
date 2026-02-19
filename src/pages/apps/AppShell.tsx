@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation, useParams, Navigate } from "react-router-dom";
 import { apps as appsData } from "../../data/apps";
 import PageShell from "../../components/PageShell";
+import AppIcon from "../../components/AppIcon";
 import { useTranslationBar } from "../../contexts/TranslationContext";
 
 export default function AppShell({ isSidebarOpen, onToggleSidebar }: { isSidebarOpen: boolean; onToggleSidebar: () => void }) {
@@ -13,7 +14,13 @@ export default function AppShell({ isSidebarOpen, onToggleSidebar }: { isSidebar
   const { setText } = useTranslationBar();
 
   return (
-    <PageShell title={app.name} subtitle={`${app.name} • Mini app`} isSidebarOpen={isSidebarOpen} onToggleSidebar={onToggleSidebar}>
+    <PageShell
+      title={app.name}
+      subtitle={`${app.name} • Mini app`}
+      icon={<AppIcon appId={app.id} size={28} />}
+      isSidebarOpen={isSidebarOpen}
+      onToggleSidebar={onToggleSidebar}
+    >
       {app.id !== "sarabun" && (
         <nav className="app-shell-tabs">
           {tabPages.map((p) => {

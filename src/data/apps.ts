@@ -102,9 +102,10 @@ export const apps: AppDef[] = [
     logo: "📄",
     pages: [
       { id: "overview", label: "ภาพรวม", labelEn: "Overview", path: "overview" },
-      { id: "upload", label: "อัปโหลด", labelEn: "Upload", path: "upload" },
-      { id: "flow", label: "รายการ", labelEn: "Flow", path: "flow" },
-      { id: "settings", label: "การตั้งค่า", path: "settings" },
+      { id: "officer", label: "เจ้าหน้าที่", labelEn: "Officer", path: "officer" },
+      { id: "admin", label: "ผู้บริหาร", labelEn: "Admin", path: "admin" },
+      { id: "reports", label: "รายงาน", labelEn: "Reports", path: "reports" },
+      { id: "settings", label: "การตั้งค่า", labelEn: "Settings", path: "settings" },
     ],
   },
 ];

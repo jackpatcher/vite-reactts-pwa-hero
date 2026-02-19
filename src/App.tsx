@@ -32,7 +32,6 @@ import {
   Package,
   Receipt,
   RotateCcw,
-  Search,
   Settings,
   ShoppingBag,
   Sun,
@@ -48,6 +47,7 @@ import {
 } from "react-router-dom";
 import ThemeSettingsPage from "./pages/ThemeSettingsPage";
 import QuickAppsBar from "./components/QuickAppsBar";
+import AppIcon from "./components/AppIcon";
 import AppsListPage from "./pages/AppsListPage";
 import MiniAppShell from "./pages/apps/AppShell";
 import AppPage from "./pages/apps/AppPage";
@@ -575,6 +575,7 @@ function AppShell() {
                       <div className="submenu">
                         {item.subItems.map((sub) => {
                           const isActive = location.pathname === sub.path;
+                          const appIdFromPath = sub.path && sub.path.startsWith("/apps/") ? sub.path.split("/")[2] : null;
 
                           return (
                             <Button
@@ -601,7 +602,7 @@ function AppShell() {
                             >
                               <span className="submenu-item">
                                 <span className="submenu-icon">
-                                  <ChevronRight size={14} />
+                                  {appIdFromPath ? <AppIcon appId={appIdFromPath} size={14} color={isActive ? "#ffffff" : undefined} /> : <ChevronRight size={14} />}
                                 </span>
                                 <span className="submenu-text">{sub.label}</span>
                               </span>

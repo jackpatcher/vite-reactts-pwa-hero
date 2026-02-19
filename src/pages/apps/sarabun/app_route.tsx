@@ -1,8 +1,10 @@
 import React from "react";
 import { apps as appsData } from "../../../data/apps";
 import SarabunOverview from "./tab_overview";
-import SarabunUpload from "./tab_upload";
-import SarabunFlow from "./tab_flow";
+import SarabunOfficer from "./tab_officer";
+import SarabunAdmin from "./tab_admin";
+import SarabunReports from "./tab_reports";
+ 
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslationBar } from "../../../contexts/TranslationContext";
 
@@ -14,19 +16,23 @@ type RenderArgs = {
 export function renderSarabunContent({ pageDef }: RenderArgs): React.ReactNode | null {
   if (!pageDef) return null;
   if (pageDef.path === "overview") return <SarabunOverview />;
-  if (pageDef.path === "upload") return <SarabunUpload />;
-  if (pageDef.path === "flow") return <SarabunFlow />;
+  if (pageDef.path === "admin") return <SarabunAdmin />;
+  if (pageDef.path === "officer") return <SarabunOfficer />;
+  if (pageDef.path === "reports") return <SarabunReports />;
+ 
   return null;
 }
 
 // Centralized tab definitions for the Sarabun app.
 export function getSarabunTabs(appId?: string) {
   const app = appsData.find((a) => a.id === (appId || "sarabun"));
-  return app ? app.pages.slice(0, 3) : [
-    { id: "overview", label: "ภาพรวม", path: "overview" },
-    { id: "upload", label: "อัปโหลด", path: "upload" },
-    { id: "flow", label: "รายการ", path: "flow" },
-  ];
+    return app ? app.pages : [
+      { id: "overview", label: "ภาพรวม", path: "overview" },
+      { id: "admin", label: "ผู้บริหาร", path: "admin" },
+      { id: "officer", label: "เจ้าหน้าที่", path: "officer" },
+      { id: "reports", label: "รายงาน", path: "reports" },
+ 
+    ];
 }
 
 // Move TabsHeader here so per-app code is colocated with the app route.
@@ -35,7 +41,12 @@ export function TabsHeader() {
   const { appId, page } = useParams();
   const active = page || "overview";
 
-  const tabs = getSarabunTabs(appId);
+  const currentAppId = appId || 'sarabun'
+  const tabs = getSarabunTabs(appId).filter((t) => {
+    // hide settings tab for Sarabun in the header
+    if (currentAppId === 'sarabun' && (t.path === 'settings' || t.id === 'settings')) return false
+    return true
+  })
 
   const { setText } = useTranslationBar();
 

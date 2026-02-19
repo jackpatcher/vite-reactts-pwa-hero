@@ -11,6 +11,7 @@ type PageHeaderProps = SidebarToggleProps & {
   title: string;
   subtitle?: string;
   actions?: JSX.Element;
+  icon?: JSX.Element;
 };
 
 type PageShellProps = PageHeaderProps & {
@@ -23,6 +24,7 @@ export function PageHeader({
   actions,
   isSidebarOpen,
   onToggleSidebar,
+  icon,
 }: PageHeaderProps) {
   return (
     <div className="page-header">
@@ -36,6 +38,7 @@ export function PageHeader({
         >
           <Menu size={18} />
         </Button>
+        {icon ? <div className="page-header-icon mr-3">{icon}</div> : null}
         <div>
           <h1>{title}</h1>
           {subtitle ? <p className="page-subtitle">{subtitle}</p> : null}
