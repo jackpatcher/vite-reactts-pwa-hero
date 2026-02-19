@@ -53,6 +53,8 @@ import MiniAppShell from "./pages/apps/AppShell";
 import AppPage from "./pages/apps/AppPage";
 import DevToolsPage from "./pages/DevToolsPage";
 import { apps } from "./data/apps";
+import { TranslationProvider } from "./contexts/TranslationContext";
+import TranslationBar from "./components/TranslationBar";
 import { writeTheme, readFirstTimeSetup, writeFirstTimeSetup } from "./lib/appStorage";
 import { FirstimeSetupFlow } from "./modules/firsttimeSetup";
 import {
@@ -424,6 +426,7 @@ function AppShell() {
           { label: "All Apps", path: "/apps" },
           ...installed.map((app) => ({
             label: app.name,
+            labelEn: (app as any).nameEn || app.name,
             path: `/apps/${app.id}/${app.pages[0]?.path ?? ""}`,
           })),
         ],
@@ -491,7 +494,8 @@ function AppShell() {
   }
 
   return (
-    <ToastProvider>
+    <TranslationProvider>
+      <ToastProvider>
       <div className="app">
         <div className={`toast${toast ? " is-visible" : ""}`}>
           {toast}
@@ -506,16 +510,7 @@ function AppShell() {
               </div>
             </div>
             <div className="appbar-center">
-              <div className="appbar-search-wrap">
-                <Input
-                  aria-label="Search"
-                  placeholder="Search  "
-                  startContent={<Search size={16} />}
-                  variant="flat"
-                  size="sm"
-                  className="appbar-search"
-                />
-              </div>
+              <TranslationBar />
             </div>
             <div className="appbar-actions">
               <QuickAppsBar />
@@ -591,6 +586,18 @@ function AppShell() {
                               color={isActive ? "primary" : "default"}
                               className={`submenu-button${isActive ? " is-active" : ""}`}
                               size="sm"
+                              onMouseEnter={() => {
+                                try {
+                                  const evt = new CustomEvent("_setTranslation", { detail: { text: (sub as any).labelEn || sub.label } });
+                                  window.dispatchEvent(evt);
+                                } catch (e) {}
+                              }}
+                              onMouseLeave={() => {
+                                try {
+                                  const evt = new CustomEvent("_setTranslation", { detail: { text: "" } });
+                                  window.dispatchEvent(evt);
+                                } catch (e) {}
+                              }}
                             >
                               <span className="submenu-item">
                                 <span className="submenu-icon">
@@ -713,7 +720,8 @@ function AppShell() {
           </main>
         </div>
       </div>
-    </ToastProvider>
+      </ToastProvider>
+    </TranslationProvider>
   );
 }
 
@@ -1073,7 +1081,7 @@ function InsightsPage({ isSidebarOpen, onToggleSidebar }: SidebarToggleProps) {
         <Card>
           <CardHeader>Weekly retention</CardHeader>
           <CardBody>
-            <Progress value={74} color="primary" className="stat-progress" />
+            <Progress value={74} color="primary" className="stat-progress" aria-label="Weekly retention progress" />
             <div className="stat-caption">Up from 69% last week</div>
           </CardBody>
         </Card>
@@ -1216,7 +1224,7 @@ function FulfillmentPage({
         <Card>
           <CardHeader>Carrier SLA</CardHeader>
           <CardBody>
-            <Progress value={82} color="secondary" className="stat-progress" />
+            <Progress value={82} color="secondary" className="stat-progress" aria-label="Carrier SLA on-time dispatch rate" />
             <div className="stat-caption">On-time dispatch rate</div>
           </CardBody>
         </Card>

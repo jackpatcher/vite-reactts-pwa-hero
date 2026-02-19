@@ -118,7 +118,7 @@ export default function DatabaseViewer() {
         <Card className={`flex-1 flex flex-col shadow-lg ${isDark ? "bg-gray-800" : "bg-white"}`} style={{overflow: 'visible'}}>
           <CardHeader className={`flex flex-col md:flex-row md:justify-between md:items-center gap-4 pb-4 border-b-2 ${isDark ? "border-gray-700" : "border-gray-200"}`}>
             <div>
-              <h2 className={`text-3xl font-bold flex items-center gap-2 ${isDark ? "text-white" : "text-gray-900"}`}><FlowbiteIcon name="overview" size={28} /> IndexedDB Viewer</h2>
+              <h2 className={`text-3xl font-bold flex items-center gap-2 ${isDark ? "text-white" : "text-gray-900"}`}><FlowbiteIcon name="overview" size={28} /> Database Viewer</h2>
               <p className={`text-xs md:text-sm mt-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}>Database: ambridge-db (CTRL+SHIFT+E testFirstTimeSetup ✨)</p>
             </div>
             <div className="flex gap-2 flex-wrap">

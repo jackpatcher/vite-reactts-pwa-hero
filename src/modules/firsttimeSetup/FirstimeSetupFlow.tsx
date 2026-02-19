@@ -13,7 +13,7 @@ const steps = [
   },
   {
     title: "ข้อมูลโรงเรียน",
-    description: "กรุณากรอก SchoolID และ SchoolPass (รหัส 6 ตัว, ตัวอักษรหรือตัวเลข)",
+    description: "กรุณากรอก SchoolID และ SchoolPass (รหัส 6 ตัว)",
     badge: "step 2",
   },
   {
@@ -163,7 +163,7 @@ export default function FirstimeSetupFlow() {
                     required
                   />
                   <div className="flex flex-col gap-2">
-                    <label className="font-medium text-sm mb-1">SchoolPass (รหัส 6 ตัว, ตัวอักษรหรือตัวเลข)</label>
+                    <label className="font-medium text-sm mb-1">SchoolPass (รหัส 6 ตัว)</label>
                     <div id="otp-input" className="flex justify-center">
                       <OtpInput
                         length={6}
@@ -185,7 +185,7 @@ export default function FirstimeSetupFlow() {
               <CardBody>
                 <h2>ข้อมูลผู้ใช้</h2>
                 <p>กรุณากรอก Username และ Password เพื่อยืนยันตัวตน</p>
-                <div className="mt-4 flex flex-col gap-2">
+                <div className="mt-4 flex flex-col gap-2 items-center">
                   <FloatLabelInput
                     name="username"
                     label="Username"
@@ -193,6 +193,7 @@ export default function FirstimeSetupFlow() {
                     value={username}
                     onChange={val => setUsername(val)}
                     required
+                    className="w-full max-w-sm mx-auto"
                   />
                   <FloatLabelInput
                     name="password"
@@ -201,6 +202,7 @@ export default function FirstimeSetupFlow() {
                     value={password}
                     onChange={val => setPassword(val)}
                     required
+                    className="w-full max-w-sm mx-auto"
                   />
                 </div>
               </CardBody>

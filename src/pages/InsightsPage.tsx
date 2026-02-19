@@ -19,7 +19,7 @@ export default function InsightsPage({ isSidebarOpen, onToggleSidebar }: Sidebar
         <Card>
           <CardHeader>Weekly retention</CardHeader>
           <CardBody>
-            <Progress value={74} color="primary" className="stat-progress" />
+            <Progress value={74} color="primary" className="stat-progress" aria-label="Weekly retention progress" />
             <div className="stat-caption">Up from 69% last week</div>
           </CardBody>
         </Card>

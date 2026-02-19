@@ -1,6 +1,8 @@
 import { Navigate, useParams } from "react-router-dom";
 import { Button, Card, CardBody, CardHeader, Chip, Input, Progress, Switch } from "@heroui/react";
 import { apps as appsData } from "../../data/apps";
+import { renderAppContent } from "./AppRouteRegistry";
+import { useTranslationBar } from "../../contexts/TranslationContext";
 
 export default function AppPage() {
   const { appId, page } = useParams();
@@ -15,17 +17,20 @@ export default function AppPage() {
     return fallback ? <Navigate to={`/apps/${app.id}/${fallback.path}`} /> : <Navigate to="/apps" />;
   }
 
+  const { setText } = useTranslationBar();
+
   return (
     <div className="app-page">
       <div className="app-page-header">
         <div>
-          <h3>{app.name} — {pageDef.label}</h3>
-          <p className="app-page-subtitle">Sample UI for the {pageDef.label.toLowerCase()} tab.</p>
+          <h3 onMouseEnter={() => setText(`${app.nameEn ?? app.name} — ${pageDef.labelEn ?? pageDef.label}`)} onMouseLeave={() => setText("")}>{app.name} — {pageDef.label}</h3>
+          <p className="app-page-subtitle" onMouseEnter={() => setText(`Sample UI for the ${pageDef.labelEn ?? pageDef.label} tab.`)} onMouseLeave={() => setText("")}>Sample UI for the {pageDef.label.toLowerCase()} tab.</p>
         </div>
-        <Button color="primary">New {pageDef.label}</Button>
+        <Button color="primary" onMouseEnter={() => setText(`New ${pageDef.labelEn ?? pageDef.label}`)} onMouseLeave={() => setText("")}>New {pageDef.label}</Button>
       </div>
 
-      {pageIndex === 0 ? (
+      {/* App-specific renderer (from registry) */}
+      {renderAppContent({ app, pageDef }) ?? (pageIndex === 0 ? (
         <div className="app-page-grid">
           <Card className="app-page-card">
             <CardHeader>Today</CardHeader>
@@ -59,7 +64,7 @@ export default function AppPage() {
             </CardBody>
           </Card>
         </div>
-      ) : null}
+      ) : null) }
 
       {pageIndex === 1 ? (
         <div className="app-page-grid app-page-grid--two">
