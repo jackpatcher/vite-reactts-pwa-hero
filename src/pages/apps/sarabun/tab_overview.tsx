@@ -1,8 +1,10 @@
 import { useMemo, useState, useEffect, type JSX } from "react";
 import { TabsHeader } from "./app_route";
 import MetricCard from "../../../components/MetricCard";
+import SimpleDropdown from "../../../components/Dropdown";
 import { Card, CardBody, CardHeader } from "@heroui/react";
-import { MapPin, FileText, Search, Clipboard, File, FileCheck, ChevronLeft, ChevronRight } from "lucide-react";
+import { MapPin, FileText, Search, Clipboard, File, FileCheck } from "lucide-react";
+import Pagination from "../../../components/Pagination";
 
 export default function SarabunOverview() {
   const [query, setQuery] = useState("")
@@ -109,7 +111,7 @@ export default function SarabunOverview() {
           title="รอเสนอ"
           value="5"
           subtitle="เอกสารรอเสนอ"
-          initials="รส"
+          icon={<FileText className="w-6 h-6 text-white" />}
           accent="#3b82f6"
             progress={68}
             onClick={() => setStatusFilter('รอเสนอ')}
@@ -121,7 +123,7 @@ export default function SarabunOverview() {
           title="เซ็นแล้ว"
           value="7"
           subtitle="เอกสารที่ลงนามแล้ว"
-          initials="สล"
+          icon={<FileCheck className="w-6 h-6 text-white" />}
           accent="#10b981"
             progress={74}
             onClick={() => setStatusFilter('เซ็น')}
@@ -133,7 +135,7 @@ export default function SarabunOverview() {
           title="มอบหมาย"
           value="3"
           subtitle="เอกสารที่ถูกมอบหมาย"
-          initials="มม"
+          icon={<Clipboard className="w-6 h-6 text-white" />}
           accent="#f97316"
             progress={42}
             onClick={() => setStatusFilter('มอบ')}
@@ -145,7 +147,7 @@ export default function SarabunOverview() {
           title="ทั้งหมด"
           value="12"
           subtitle="เอกสารรวมในระบบ"
-          initials="ทท"
+          icon={<File className="w-6 h-6 text-white" />}
           accent="#8b5cf6"
             progress={100}
             onClick={() => setStatusFilter('all')}
@@ -170,25 +172,36 @@ export default function SarabunOverview() {
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 border rounded-lg"
+                  className="w-full pl-10 pr-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg"
                   placeholder="ค้นหาเอกสาร หรือหัวข้อ..."
                 />
               </div>
             </div>
 
             <div className="flex gap-2">
-              <select value={docType} onChange={(e) => setDocType(e.target.value)} className="py-2 px-3 border rounded-lg">
-                <option value="all">ประเภท: ทั้งหมด</option>
-                <option value="คำสั่ง">คำสั่ง</option>
-                <option value="รายงาน">รายงาน</option>
-              </select>
-              <select value={dept} onChange={(e) => setDept(e.target.value)} className="py-2 px-3 border rounded-lg">
-                <option value="all">หน่วยงาน: ทั้งหมด</option>
-                <option value="ฝ่ายกิจการนักเรียน">ฝ่ายกิจการนักเรียน</option>
-                <option value="ฝ่ายบริหาร">ฝ่ายบริหาร</option>
-                <option value="ฝ่ายการเงิน">ฝ่ายการเงิน</option>
-              </select>
-            </div>
+                <SimpleDropdown
+                  options={[
+                    { key: 'all', label: 'ประเภท: ทั้งหมด', accent: 'sky' },
+                    { key: 'คำสั่ง', label: 'คำสั่ง', accent: 'amber' },
+                    { key: 'รายงาน', label: 'รายงาน', accent: 'violet' },
+                  ]}
+                  selectedKey={docType}
+                  onChange={(k) => setDocType(k)}
+                  menuWidth="w-44"
+                />
+
+                <SimpleDropdown
+                  options={[
+                    { key: 'all', label: 'หน่วยงาน: ทั้งหมด', accent: 'sky' },
+                    { key: 'ฝ่ายกิจการนักเรียน', label: 'ฝ่ายกิจการนักเรียน', accent: 'pink' },
+                    { key: 'ฝ่ายบริหาร', label: 'ฝ่ายบริหาร', accent: 'amber' },
+                    { key: 'ฝ่ายการเงิน', label: 'ฝ่ายการเงิน', accent: 'green' },
+                  ]}
+                  selectedKey={dept}
+                  onChange={(k) => setDept(k)}
+                  menuWidth="w-56"
+                />
+              </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-4">
@@ -218,30 +231,13 @@ export default function SarabunOverview() {
             ))}
           </div>
 
-          <div className="mt-4 flex items-center justify-between">
-            <div className="text-sm text-gray-600">แสดง {Math.min(filtered.length, page * pageSize)} จาก {filtered.length} รายการ</div>
-            <div className="flex items-center gap-2">
-              <button
-                aria-label="ก่อนหน้า"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="p-2 rounded-md border disabled:opacity-50 disabled:cursor-not-allowed bg-white"
-              >
-                <ChevronLeft className="w-4 h-4 text-gray-600" />
-              </button>
-
-              <div className="px-3 py-1 border rounded text-sm bg-white">{page} / {totalPages}</div>
-
-              <button
-                aria-label="ถัดไป"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="p-2 rounded-md border disabled:opacity-50 disabled:cursor-not-allowed bg-white"
-              >
-                <ChevronRight className="w-4 h-4 text-gray-600" />
-              </button>
-            </div>
-          </div>
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={filtered.length}
+            pageSize={pageSize}
+            onPageChange={(p) => setPage(p)}
+          />
         </CardBody>
       </Card>
     </div>

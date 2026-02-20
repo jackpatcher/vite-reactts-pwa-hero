@@ -7,6 +7,7 @@ type Props = {
   subtitle?: string
   accent?: string
   initials?: string
+  icon?: React.ReactNode
   progress?: number // 0-100
   titleEn?: string
   subtitleEn?: string
@@ -24,7 +25,7 @@ function hexToRgba(hex: string, alpha = 1) {
 }
 
 export default function MetricCard(props: Props) {
-  const { title, value, subtitle, accent = '#60a5fa', initials = '', progress = 0, titleEn, subtitleEn, onClick, active } = props
+  const { title, value, subtitle, accent = '#60a5fa', initials = '', icon, progress = 0, titleEn, subtitleEn, onClick, active } = props
   const ringPct = Math.max(0, Math.min(100, Math.round(progress)))
   const ringStyle: React.CSSProperties = {
     background: `conic-gradient(${accent} ${ringPct}%, rgba(230,238,249,1) ${ringPct}%)`,
@@ -75,7 +76,7 @@ export default function MetricCard(props: Props) {
           style={{ background: `linear-gradient(135deg, ${hexToRgba(accent, 0.9)}, ${accent})` }}
           aria-hidden
         >
-          <span>{initials}</span>
+          {icon ? icon : <span>{initials}</span>}
         </div>
       </div>
 
