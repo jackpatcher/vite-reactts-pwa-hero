@@ -8,5 +8,5 @@ git push -u origin main
 
 
 git add .
-git commit -m " dropdown page comp"
+git commit -m " pwa .checkUpdate autodeploy gh page"
 git push -u origin main 

@@ -1,4 +1,4 @@
-import React from 'react'
+// ...existing code...
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 type Props = {

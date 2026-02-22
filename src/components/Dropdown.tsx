@@ -1,4 +1,4 @@
-import React from "react";
+// ...existing code...
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button } from "@heroui/react";
 
 type Option = {
@@ -55,7 +55,7 @@ export default function SimpleDropdown({ options, selectedKey, onChange, menuWid
         selectedKeys={new Set([selectedKey])}
         selectionMode="single"
         variant="flat"
-        onSelectionChange={(keys: Set<string>) => {
+        onSelectionChange={(keys) => {
           const v = Array.from(keys as Iterable<string>)[0] ?? options[0]?.key ?? "all";
           onChange(v);
         }}

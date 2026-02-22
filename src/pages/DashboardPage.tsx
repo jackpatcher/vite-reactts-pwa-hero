@@ -12,6 +12,9 @@ import {
   TableRow,
 } from "@heroui/react";
 import PageShell from "../components/PageShell";
+import { useState } from "react";
+import { useToast } from "../components/ToastContext";
+import { Refresh } from "flowbite-react-icons/outline";
 
 type SidebarToggleProps = {
   isSidebarOpen: boolean;
@@ -22,6 +25,36 @@ export default function DashboardPage({
   isSidebarOpen,
   onToggleSidebar,
 }: SidebarToggleProps) {
+  // ...existing code...
+  const [localVersion] = useState<string>("1.0.0"); // ปรับตรงนี้ให้ sync กับ version จริง
+  const { showToast } = useToast();
+
+  // ไม่เช็กอัตโนมัติทุกครั้งที่เปิดหน้า Dashboard
+
+  const checkVersion = async () => {
+    try {
+      const res = await fetch("/version.json?" + Date.now());
+      const data = await res.json();
+      // ...existing code...
+      if (data.version !== localVersion) {
+        showToast({
+          message: `พบเวอร์ชันใหม่ ${data.version}`,
+          type: "info",
+        });
+      } else {
+        showToast({
+          message: "แอปเป็นเวอร์ชันล่าสุดแล้ว",
+          type: "success",
+        });
+      }
+    } catch (e) {
+      showToast({
+        message: "เช็กเวอร์ชันไม่สำเร็จ",
+        type: "danger",
+      });
+    }
+  };
+
   return (
     <PageShell
       title="Dashboard Overview"
@@ -32,6 +65,15 @@ export default function DashboardPage({
         <>
           <Button variant="flat">Export</Button>
           <Button color="primary">Create report</Button>
+          <Button
+            isIconOnly
+            variant="bordered"
+            title="Check update"
+            onClick={checkVersion}
+            className="ml-2"
+          >
+            <Refresh size={22} />
+          </Button>
         </>
       }
     >
